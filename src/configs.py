@@ -107,7 +107,7 @@ class Settings(BaseSettings):
             "text_det_box_thresh ":  None,
             "text_det_unclip_ratio ":  None,
             "text_det_input_shape ":  None,
-            "text_rec_score_thresh ":  None,
+            "text_rec_score_thresh ":  0.6,
             "text_rec_input_shape ":  None,
             "lang": "vi",
             "ocr_version": None,

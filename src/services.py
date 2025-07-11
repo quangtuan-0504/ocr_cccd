@@ -13,6 +13,7 @@ from exceptions import (
     BadBoxError,
     ModelNotLoadedError
     )
+from logger import logger
 
 class IdCardOCRService:
     """
@@ -79,7 +80,16 @@ class IdCardOCRService:
             results = self.yolo_model.predict(image, **settings.yoloobb_configs["inference"]) # results(is list) là danh sách các kết quả dự đoán của các ảnh đầu vào
             
             if not results or not results[0].obb:
-                return None, {"error": "Không phát hiện được thẻ trong ảnh."}
+                # return None, {"error": "Không phát hiện được thẻ trong ảnh."}
+
+                # temporal test code when model card detection is not trained
+                logger.warning("Không phát hiện được thẻ trong ảnh, trả về ảnh gốc.")
+                # Trả về ảnh gốc và thông tin giả định
+                return image_np, {
+                    "class": "cccd_front_correct",
+                    "confidence": 0.9,
+                    "is_inverted": False
+                }   
             
             # Lấy kết quả OBB
             obb = results[0].obb # OBB object
@@ -95,6 +105,7 @@ class IdCardOCRService:
             
             # Lấy kích thước ảnh
             img_height, img_width = image_np.shape[:2]
+            # Kiểm tra tính hợp lệ của bounding box
             validate_bounding_box(
                 bbox=best_box,
                 image_size=(img_width, img_height)
@@ -132,13 +143,15 @@ class IdCardOCRService:
                 **settings.paddleocr_configs["inference"]    
             )
             extracted_text = []
-            for line in result:
-                box = line[0]  # Tọa độ hộp văn bản
-                text, confidence = line[1]  # Văn bản và độ tin cậy
+            for res_per_img in result: # Only one image in result
+                rec_texts = res_per_img["rec_texts"]  # Kết quả nhận dạng văn bản
+                rec_scores = res_per_img["rec_scores"]  # Độ tin cậy của văn bản
+                rec_boxes = res_per_img["rec_boxes"]  # Tọa độ bounding box của văn bản
+
                 extracted_text.append({
-                    "text": text,
-                    "box": box,
-                    "confidence": float(confidence)
+                    "texts": rec_texts,
+                    "boxs": rec_boxes,
+                    "confidences": rec_scores
                 })
             return extracted_text
         except Exception as e:
