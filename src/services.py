@@ -1,9 +1,10 @@
 import numpy as np
 from typing import Tuple, List, Optional, Dict
-from PIL import Image
+from PIL import Image, ImageOps
 import cv2
-from paddleocr import PaddleOCR
+from paddleocr import DocImgOrientationClassification, TextImageUnwarping
 from ultralytics import YOLO
+from vietocr.tool.predictor import Predictor
 
 from configs import settings
 from utils import validate_image_quality, validate_bounding_box, crop_and_rotate_image
@@ -29,17 +30,8 @@ class IdCardOCRService:
     """
     
     # Định nghĩa các lớp thẻ
-    CLASS_NAMES = {
-        0: "cccd_front_correct",
-        1: "cccd_front_inverted",
-        2: "cccd_back_correct",
-        3: "cccd_back_inverted",
-        4: "cc_front_correct",
-        5: "cc_front_inverted",
-        6: "cc_back_correct",
-        7: "cc_back_inverted",
-        8: "other_card"
-    }
+    CLASS_CARD_NAMES = settings.CLASS_NAMES
+    CLASS_FIELD_NAME = settings.FIELD_CLASS
     
     # Ngưỡng kích thước và tỷ lệ hợp lý
     MIN_AREA_RATIO = 0.1  # Tỷ lệ diện tích tối thiểu của thẻ so với ảnh
@@ -49,8 +41,11 @@ class IdCardOCRService:
 
     def __init__(
         self,
-        yolo_model: YOLO,
-        paddleocr_model: PaddleOCR
+        cardobb_model: YOLO,
+        imgorient_model: DocImgOrientationClassification,
+        imgunwarp_model: TextImageUnwarping,
+        textdetcls_model: YOLO,
+        rec_model: Predictor
     ):
         """
         Khởi tạo dịch vụ OCR cho thẻ căn cước/chứng minh nhân dân.
@@ -59,8 +54,11 @@ class IdCardOCRService:
             yolo_model (YOLO): Mô hình YOLOv11 OBB để phát hiện và cắt thẻ.
             paddleocr_model (PaddleOCR): Mô hình PaddleOCR để trích xuất văn bản.
         """
-        self.yolo_model = yolo_model
-        self.paddleocr_model = paddleocr_model
+        self.cardobb_model = cardobb_model
+        self.imgorient_model = imgorient_model
+        self.imgunwarp_model = imgunwarp_model
+        self.textdetcls_model = textdetcls_model
+        self.rec_model = rec_model
 
 
     def _predict_card(self, image: Image.Image) -> Tuple[Optional[np.ndarray], Optional[Dict]]:
@@ -77,13 +75,13 @@ class IdCardOCRService:
             # Chuyển ảnh PIL sang numpy
             image_np = np.array(image)
             # Dự đoán với YOLOv11 OBB
-            results = self.yolo_model.predict(image, **settings.yoloobb_configs["inference"]) # results(is list) là danh sách các kết quả dự đoán của các ảnh đầu vào
+            results = self.cardobb_model.predict(image, **settings.yolo_cardobb_configs["inference"]) # results(is list) là danh sách các kết quả dự đoán của các ảnh đầu vào
             
             if not results or not results[0].obb:
                 # return None, {"error": "Không phát hiện được thẻ trong ảnh."}
 
                 # temporal test code when model card detection is not trained
-                logger.warning("Không phát hiện được thẻ trong ảnh, trả về ảnh gốc.")
+                logger.warning("Không phát hiện được thẻ trong ảnh, trả về ảnh gốc, nhớ dùng ảnh chụp sát góc để test.")
                 # Trả về ảnh gốc và thông tin giả định
                 return image_np, {
                     "class": "cccd_front_correct",
@@ -113,49 +111,124 @@ class IdCardOCRService:
             # Cắt ảnh theo hộp OBB
             cropped_image = crop_and_rotate_image(image_np, best_box)
             
-            # Xoay ảnh nếu thẻ bị ngược
-            is_inverted = "inverted" in self.CLASS_NAMES[best_class]
-            if is_inverted:
-                cropped_image = cv2.rotate(cropped_image, cv2.ROTATE_180)
-
+           
             return cropped_image, {
-                "class": self.CLASS_NAMES[best_class],
-                "confidence": float(best_score),
-                "is_inverted": is_inverted
+                "class": self.CLASS_CARD_NAMES[best_class],
+                "confidence": float(best_score)
             }
 
         except Exception as e:
             return None, {"error": f"Lỗi khi dự đoán thẻ: {str(e)}"}
 
-    def _extract_text(self, cropped_image: np.ndarray) -> List[Dict]:
+    def _rotate_card(self, cropped_image: np.ndarray) -> np.ndarray:
         """
-        Trích xuất văn bản từ ảnh đã cắt sử dụng PaddleOCR.
-
+        Rotate the input image based on predicted orientation using OpenCV.
+        
         Args:
-            cropped_image (np.ndarray): Ảnh đã cắt chứa thẻ.
-
+            cropped_image (np.ndarray): Input image as a numpy array.
+        
         Returns:
-            List[Dict]: Danh sách các văn bản được trích xuất với tọa độ và độ tin cậy.
+            np.ndarray: Rotated image as a numpy array.
+        """
+        # Dự đoán hướng ảnh
+        output_orientation_cls = self.imgorient_model.predict(input=cropped_image, **settings.paddle_imgorient_configs['inference'])
+        orientation = output_orientation_cls[0]['label_names'][0] # 0, 90, 180, 270, các góc đo quay theo chiều dương(ngược kim đồng hồ), 
+        # ảnh ở góc 0 độ là ảnh ntn ... hình dung đường tròn lượng giác đơn vị là ra.
+
+        # Khởi tạo ảnh gốc từ mảng numpy
+        img_corrected = cropped_image
+        
+        # Xoay ảnh nếu cần
+        if orientation != "0":
+            # Xử lý xoay ảnh dựa trên hướng
+            if orientation == "180":
+                # Xoay 180 độ
+                img_rotated = cv2.rotate(img_corrected, cv2.ROTATE_180)
+            elif orientation == "270":
+                # Xoay 90 độ ngược chiều kim đồng hồ (tương đương rotate 90 trong PIL)
+                img_rotated = cv2.rotate(img_corrected, cv2.ROTATE_90_COUNTERCLOCKWISE)
+            elif orientation == "90":
+                # Xoay 90 độ theo chiều kim đồng hồ (chiều âm) (tương đương rotate 270 trong PIL)
+                img_rotated = cv2.rotate(img_corrected, cv2.ROTATE_90_CLOCKWISE)
+            else:
+                img_rotated = img_corrected
+        else:
+            img_rotated = img_corrected
+        
+        return img_rotated
+    
+    def _unwarp_card(self, rotated_image: np.array)-> np.array:
+        """
+        
+        """
+        output_unwarp = self.imgunwarp_model.predict(
+            input = rotated_image,
+            **settings.paddle_imgunwarp_configs['inference']
+        )
+
+        img_unwarped = output_unwarp[0]['doctr_img']
+
+        return img_unwarped
+
+
+
+    def _detect_cls_text(self, rotated_unwarped_img: np.array)-> dict[int,dict[str,np.array|float]]:
+        """
+        
+        """
+        results = self.textdetcls_model.predict(
+            source = rotated_unwarped_img,
+            **settings.yolo_textdetcls_configs['inference'] 
+        )
+        fieldname_textregion_score = {}
+        for i,res in enumerate(results): # duyệt qua từng ảnh, only 1 img
+            boxes = res.boxes
+            boxes_xyxy = boxes.xyxy.cpu().numpy()  # 2d array [[],[]]
+            scores = boxes.conf.cpu().numpy()  # 1d array
+            classes = boxes.cls.cpu().numpy().astype(int) # 1d array
+            # Lặp qua từng bounding box để cắt vùng ảnh
+            for j, box in enumerate(boxes_xyxy):
+                x_min, y_min, x_max, y_max = map(int, box)  # Chuyển đổi sang số nguyên
+                # Cắt vùng ảnh chứa object
+                cropped_img = rotated_unwarped_img[y_min:y_max, x_min:x_max]
+                cls = classes[j]
+                score = scores[j]
+                if cls in fieldname_textregion_score:
+                    if score > fieldname_textregion_score[cls]['score']:
+                        fieldname_textregion_score[cls] = {
+                            'text_region': cropped_img,
+                            'score': score
+                        }
+                else:
+                    fieldname_textregion_score[cls]  = {
+                        'text_region': cropped_img,
+                        'score': score
+                    }
+        
+        return fieldname_textregion_score
+
+
+
+
+    def _extract_text(self, fieldname_textregion_score: dict[str,dict[str,np.array|float]]) -> List[Tuple[str,str]]:
+        """
+
         """
         try:
-            result = self.paddleocr_model.predict(
-                input=cropped_image,
-                **settings.paddleocr_configs["inference"]    
-            )
-            extracted_text = []
-            for res_per_img in result: # Only one image in result
-                rec_texts = res_per_img["rec_texts"]  # Kết quả nhận dạng văn bản
-                rec_scores = res_per_img["rec_scores"]  # Độ tin cậy của văn bản
-                rec_boxes = res_per_img["rec_boxes"]  # Tọa độ bounding box của văn bản
+            field_text = []
+            for cls,textregion_score in fieldname_textregion_score.items():
+                # Chuyển đổi sang định dạng PIL để đưa vào VietOCR
+                cropped_img_pil = Image.fromarray(cv2.cvtColor(textregion_score['text_region'], cv2.COLOR_BGR2RGB))
 
-                extracted_text.append({
-                    "texts": rec_texts,
-                    "boxs": rec_boxes,
-                    "confidences": rec_scores
-                })
-            return extracted_text
+                # Nhận diện văn bản bằng VietOCR
+                vietocr_text = self.rec_model.predict(cropped_img_pil)
+
+                field_text.append(
+                    (self.CLASS_FIELD_NAME[cls],vietocr_text)
+                )
+            return field_text
         except Exception as e:
-            return [{"error": f"Lỗi khi trích xuất văn bản: {str(e)}"}]
+            return {"error": f"Lỗi khi trích xuất văn bản: {str(e)}"}
 
     def process_id_card(
         self,
@@ -192,10 +265,18 @@ class IdCardOCRService:
                 return {"status": "error", "message": f"Mặt thẻ không đúng: yêu cầu {required_side}, phát hiện {detected_class}"}
             if "other_card" in detected_class:
                 return {"status": "error", "message": "Phát hiện thẻ không thuộc loại căn cước hoặc căn cước công dân."}
+            
+            rotated_img = self._rotate_card(cropped_image=cropped_image)
+            unwarped_img = self._unwarp_card(rotated_image=rotated_img)
 
+            text_regions = self._detect_cls_text(rotated_unwarped_img=unwarped_img)
             # Trích xuất văn bản
-            extracted_text = self._extract_text(cropped_image)
+            extracted_text = self._extract_text(text_regions)
 
+
+            # map field của từng loại thẻ
+            # TODO
+            
             return {
                 "status": "success",
                 "card_info": detection_info,

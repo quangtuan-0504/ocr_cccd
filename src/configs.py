@@ -35,17 +35,13 @@ class Settings(BaseSettings):
     YOLO_CONF_THRESHOLD: float = 0.8
     # Định nghĩa các lớp thẻ
     CLASS_NAMES: dict = {
-        0: "cccd_front_correct",
-        1: "cccd_front_inverted",
-        2: "cccd_back_correct",
-        3: "cccd_back_inverted",
-        4: "cc_front_correct",
-        5: "cc_front_inverted",
-        6: "cc_back_correct",
-        7: "cc_back_inverted",
-        8: "other_card"
+        0: "cccd_front",
+        1: "cccd_back",
+        2: "cc_front",
+        3: "cc_back",
+        4: "other_card"
     }
-    yoloobb_configs: dict[str, dict[str,dict[str,any]]] = {
+    yolo_cardobb_configs: dict[str, dict[str,dict[str,any]]] = {
         "initial": {
             "model_path": YOLO_MODEL_PATH
         },
@@ -73,53 +69,65 @@ class Settings(BaseSettings):
         }
     }
 
-
-    # PaddleOCR Configuration
-    paddleocr_configs: dict[str, dict[str,any]] = {
-
+    paddle_imgorient_configs: dict[str,dict[str,any]] = {
         "initial": {
-            # Load model or not
-            "doc_orientation_classify_model_name ":  None,
-            "doc_orientation_classify_model_dir ":  None,
-
-            "doc_unwarping_model_name ":  None,
-            "doc_unwarping_model_dir ":  None,
-
-            "text_detection_model_name": "PP-OCRv5_mobile_det",
-            "text_detection_model_dir": None,
-
-            "textline_orientation_model_name": None,
-            "textline_orientation_model_dir": None,
-            "textline_orientation_batch_size": 1,
-
-            "text_recognition_model_name": None,
-            "text_recognition_model_dir": None,
-            "text_recognition_batch_size": 1,
-
-            # Use model or not
-            "use_doc_orientation_classify": False,
-            "use_doc_unwarping": False,
-            "use_textline_orientation": False,
-
-            "text_det_limit_side_len ":  100,
-            "text_det_limit_type ":  None,
-            "text_det_thresh ":  None,
-            "text_det_box_thresh ":  None,
-            "text_det_unclip_ratio ":  None,
-            "text_det_input_shape ":  None,
-            "text_rec_score_thresh ":  0.6,
-            "text_rec_input_shape ":  None,
-            "lang": "vi",
-            "ocr_version": None,
-            "device": "gpu" if torch.cuda.is_available() else "cpu",
-            "enable_hpip": False
+            "model_name	": "PP-LCNet_x1_0_doc_ori",
+            "model_dir": "",
+            "device": "gpu",
+            "enable_hpi": False,
         },
         "inference": {
-            "use_doc_orientation_classify": True,
-            "use_doc_unwarping": True,
-            "use_textline_orientation": True
-        },
+           "batch_size": 1
+        }
     }
+
+    paddle_imgunwarp_configs: dict[str,dict[str,any]] = {
+        "initial": {
+            "model_name	": "UVDoc",
+            "model_dir": "",
+            "device": "gpu",
+            "enable_hpi": False,
+
+        },
+        "inference": {
+           "batch_size": 1
+        }
+    }
+    FIELD_CLASS: dict[int,str] = {
+        0: '',
+        1: ,
+        2: ,
+        3: ,
+        4: ,
+    }
+    yolo_textdetcls_configs: dict[str,dict[str,any]] = {
+        "initial": {
+            "model_path": "yolo11n.pt"
+        },
+        "inference": {
+            "conf": YOLO_CONF_THRESHOLD,
+            "iou": 0.5,
+            "imgsz": (640, 640),
+            "device": "cuda" if torch.cuda.is_available() else "cpu",
+            "rect": True,  # Use rectangular inference
+            "half":	False,
+            "batch": 1,	
+            "max_det": 300,
+            "vid_stride": 1,
+            "stream_buffer": False,
+            "visualize": False,
+            "augment": False,
+            "agnostic_nms":	False,
+            "classes": None,
+            "retina_masks":	False,	
+            "embed": None,	
+            "project":	None,
+            "name":	None,
+            "stream": False,	
+            "verbose": False ,  
+        }
+    }
+
 
    
 settings = Settings()

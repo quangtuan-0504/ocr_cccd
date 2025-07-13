@@ -7,7 +7,13 @@ sys.path.append(os.path.abspath(os.path.join(
     os.path.dirname(__file__), '..')))
 from logger import logger
 from configs import settings
-from models import load_paddleocr, load_yoloobb
+from models import (
+    load_yolo_cardobb_model,
+    load_paddle_imgorient_model,
+    load_paddle_imgunwarp_model,
+    load_yolo_textdetcls_model,
+    load_vietocr_rec_model
+)
 from services import IdCardOCRService
 
 
@@ -17,11 +23,17 @@ def get_services():
     """
     resources = {}
     try:
-        paddleocr = load_paddleocr(settings.paddleocr_configs.get('initial', {}))
-        yoloobb = load_yoloobb(settings.yoloobb_configs.get('initial', {}))
+        yolo_cardobb_model = load_yolo_cardobb_model(settings.yolo_cardobb_configs.get('initial', {}))
+        paddle_imgorient_model = load_paddle_imgorient_model(settings.paddle_imgorient_configs.get('initial', {}))
+        paddle_imgunwarp_model = load_paddle_imgunwarp_model(settings.paddle_imgunwarp_configs.get('initial', {}))
+        yolo_textdetcls_model = load_yolo_textdetcls_model(settings.yolo_textdetcls_configs.get('initial', {}))
+        vietocr_rec_model = load_vietocr_rec_model()
         resources['ocr_service'] = IdCardOCRService(
-            yolo_model=yoloobb,
-            paddleocr_model=paddleocr
+            cardobb_model = yolo_cardobb_model,
+            imgorient_model = paddle_imgorient_model,
+            imgunwarp_model = paddle_imgunwarp_model,
+            textdetcls_model = yolo_textdetcls_model,
+            rec_model = vietocr_rec_model
         )
         logger.info("Services loaded successfully.")
     except Exception as e:
