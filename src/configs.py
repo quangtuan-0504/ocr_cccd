@@ -94,11 +94,14 @@ class Settings(BaseSettings):
         }
     }
     FIELD_CLASS: dict[int,str] = {
-        0: '',
-        1: ,
-        2: ,
-        3: ,
-        4: ,
+        0: 'id number',
+        1: 'full name',
+        2: 'date of birth',
+        3: 'sex',
+        4: 'nationality',
+        6: 'place of origin',
+        7: 'place of residence',
+        8: 'date of expiry'
     }
     yolo_textdetcls_configs: dict[str,dict[str,any]] = {
         "initial": {
@@ -126,6 +129,24 @@ class Settings(BaseSettings):
             "stream": False,	
             "verbose": False ,  
         }
+    }
+
+    cc_front_fields = { 
+        "Số định danh cá nhân / Personal identification number": "",
+        "Họ, chữ đệm và tên khai sinh / Full name": "",
+        "Ngày, tháng, năm sinh / Date of birth": "",
+        "Giới tính / Sex": "",
+        "Quốc tịch / Nationality": "" 
+    }
+    cccd_front_fields = { 
+        "Số / No.": "",
+        "Họ và tên / Full name": "",
+        "Ngày sinh / Date of birth": "",
+        "Giới tính / Sex": "",
+        "Quốc tịch / Nationality": "",
+        "Quê quán / Place of origin": "",
+        "Nơi thường trú / Place of residence": "",
+        "Có giá trị đến / Date of expiry": ""
     }
 
 

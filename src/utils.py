@@ -123,104 +123,53 @@ def crop_and_rotate_image(image: np.ndarray, box: np.ndarray):
             print(f"Error in cropping/rotating image: {str(e)}")
             return None
 
-def determine_card_type_and_face(detections: List[BoundingBox]) -> Tuple[CardType, CardFace]:
-    """
-    Xác định loại thẻ và mặt thẻ dựa trên class_id
-    Giả định:
-    - class_id 0: CCCD mặt trước
-    - class_id 1: CCCD mặt sau
-    - class_id 2: CMT cũ
-    """
-    if not detections:
-        return CardType.CCCD_2021, CardFace.FRONT
+def map_text2card(fieldname_text, require_type, require_side):
+    # Định nghĩa các dictionary cho cc và cccd
+    cc_front_fields = {
+        "Số định danh cá nhân / Personal identification number": "",
+        "Họ, chữ đệm và tên khai sinh / Full name": "",
+        "Ngày, tháng, năm sinh / Date of birth": "",
+        "Giới tính / Sex": "",
+        "Quốc tịch / Nationality": ""
+    }
+    cccd_front_fields = {
+        "Số / No.": "",
+        "Họ và tên / Full name": "",
+        "Ngày sinh / Date of birth": "",
+        "Giới tính / Sex": "",
+        "Quốc tịch / Nationality": "",
+        "Quê quán / Place of origin": "",
+        "Nơi thường trú / Place of residence": "",
+        "Có giá trị đến / Date of expiry": ""
+    }
     
-    # Lấy detection có confidence cao nhất
-    best_detection = max(detections, key=lambda x: x.confidence)
-    
-    if best_detection.class_id == 0:
-        return CardType.CCCD_2021, CardFace.FRONT
-    elif best_detection.class_id == 1:
-        return CardType.CCCD_2021, CardFace.BACK
-    elif best_detection.class_id == 2:
-        return CardType.CMT_OLD, CardFace.FRONT
+    # Chọn dictionary đầu ra dựa trên require_type và require_side
+    if require_type == 'cc' and require_side == 'front':
+        output_dict = cc_front_fields.copy()
+    elif require_type == 'cccd' and require_side == 'front':
+        output_dict = cccd_front_fields.copy()
     else:
-        return CardType.CCCD_2021, CardFace.FRONT
-
-def extract_field_from_text(text: str, field_type: str) -> str:
-    """
-    Trích xuất thông tin cụ thể từ text dựa trên loại trường
-    """
-    text = text.strip()
+        raise ValueError("Invalid require_type or require_side. Use 'cc' or 'cccd' for type and 'front' for side.")
     
-    if field_type == "id_number":
-        # Trích xuất số CCCD/CMT
-        import re
-        numbers = re.findall(r'\d{9,12}', text)
-        return numbers[0] if numbers else text
+    # Ánh xạ từ FIELD_CLASS sang tên trường trong dictionary đầu ra
+    field_mapping = {
+        'id number': ["Số định danh cá nhân / Personal identification number", "Số / No."],
+        'full name': ["Họ, chữ đệm và tên khai sinh / Full name", "Họ và tên / Full name"],
+        'date of birth': ["Ngày, tháng, năm sinh / Date of birth", "Ngày sinh / Date of birth"],
+        'sex': ["Giới tính / Sex", "Giới tính / Sex"],
+        'nationality': ["Quốc tịch / Nationality", "Quốc tịch / Nationality"],
+        'place of origin': ["", "Quê quán / Place of origin"],
+        'place of residence': ["", "Nơi thường trú / Place of residence"],
+        'date of expiry': ["", "Có giá trị đến / Date of expiry"]
+    }
     
-    elif field_type == "name":
-        # Trích xuất tên
-        if ":" in text:
-            return text.split(":", 1)[1].strip()
-        return text
+    # Duyệt qua fieldname_text để gán giá trị vào dictionary đầu ra
+    for field, value in fieldname_text:
+        if field in field_mapping:
+            # Chọn tên trường tương ứng dựa trên require_type
+            target_field = field_mapping[field][0] if require_type == 'cc' else field_mapping[field][1]
+            if target_field and target_field in output_dict:
+                # Gán value
+                output_dict[target_field] = value
     
-    elif field_type == "dob":
-        # Trích xuất ngày sinh
-        import re
-        date_pattern = r'\d{1,2}[/\-]\d{1,2}[/\-]\d{4}'
-        dates = re.findall(date_pattern, text)
-        return dates[0] if dates else text
-    
-    return text
-
-def parse_ocr_results(ocr_results: List, card_type: CardType, face: CardFace) -> List[dict]:
-    """
-    Parse kết quả OCR thành các trường có cấu trúc
-    """
-    fields = []
-    
-    for idx, result in enumerate(ocr_results):
-        if len(result) >= 2:
-            bbox_info = result[0]
-            text_info = result[1]
-            
-            if isinstance(text_info, tuple) and len(text_info) >= 2:
-                text = text_info[0]
-                confidence = text_info[1]
-                
-                # Phân loại trường dựa vào nội dung text
-                field_label = classify_field(text, card_type, face)
-                field_value = extract_field_from_text(text, field_label.lower().replace(" ", "_"))
-                
-                fields.append({
-                    "label": field_label,
-                    "value": field_value,
-                    "score": float(confidence)
-                })
-    
-    return fields
-
-def classify_field(text: str, card_type: CardType, face: CardFace) -> str:
-    """
-    Phân loại trường dữ liệu dựa trên nội dung text
-    """
-    text_lower = text.lower()
-    
-    if any(keyword in text_lower for keyword in ["căn cước", "cccd", "số"]):
-        return "Số CCCD"
-    elif any(keyword in text_lower for keyword in ["họ", "tên", "name"]):
-        return "Họ và tên"
-    elif any(keyword in text_lower for keyword in ["sinh", "ngày", "date"]):
-        return "Ngày sinh"
-    elif any(keyword in text_lower for keyword in ["giới", "sex", "nam", "nữ"]):
-        return "Giới tính"
-    elif any(keyword in text_lower for keyword in ["quê", "quán", "origin"]):
-        return "Quê quán"
-    elif any(keyword in text_lower for keyword in ["thường", "trú", "address"]):
-        return "Nơi thường trú"
-    elif any(keyword in text_lower for keyword in ["cấp", "issue"]):
-        return "Ngày cấp"
-    elif any(keyword in text_lower for keyword in ["hết", "hạn", "expire"]):
-        return "Có giá trị đến"
-    else:
-        return "Khác"
+    return output_dict

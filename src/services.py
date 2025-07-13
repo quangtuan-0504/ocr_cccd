@@ -7,7 +7,12 @@ from ultralytics import YOLO
 from vietocr.tool.predictor import Predictor
 
 from configs import settings
-from utils import validate_image_quality, validate_bounding_box, crop_and_rotate_image
+from utils import (
+    validate_image_quality,
+    validate_bounding_box,
+    crop_and_rotate_image,
+    map_text2card
+)
 from exceptions import (
     BadCaptureError,
     CardDetectionError,
@@ -271,16 +276,20 @@ class IdCardOCRService:
 
             text_regions = self._detect_cls_text(rotated_unwarped_img=unwarped_img)
             # Trích xuất văn bản
-            extracted_text = self._extract_text(text_regions)
+            field_text = self._extract_text(text_regions)
 
 
             # map field của từng loại thẻ
-            # TODO
+            map_field_text = map_text2card(
+                fieldname_text=field_text,
+                require_type=required_type,
+                require_side=required_side
+            )
             
             return {
                 "status": "success",
                 "card_info": detection_info,
-                "extracted_text": extracted_text
+                "data": map_field_text
             }
 
         except Exception as e:
