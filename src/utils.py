@@ -120,10 +120,9 @@ def crop_and_rotate_image(image: np.ndarray, box: np.ndarray):
 
             return cropped
         except Exception as e:
-            print(f"Error in cropping/rotating image: {str(e)}")
-            return None
+            raise(f"Error in cropping/rotating image: {str(e)}")
 
-def map_text2card(fieldname_text, require_type, require_side):
+def map_text2card(fieldname_text:  dict[str,dict[str,str|int]], require_type: str, require_side: str)-> dict[str,str]:
     # Định nghĩa các dictionary cho cc và cccd
     cc_front_fields = {
         "Số định danh cá nhân / Personal identification number": "",
@@ -164,12 +163,12 @@ def map_text2card(fieldname_text, require_type, require_side):
     }
     
     # Duyệt qua fieldname_text để gán giá trị vào dictionary đầu ra
-    for field, value in fieldname_text:
+    for field, value in fieldname_text.items():
         if field in field_mapping:
             # Chọn tên trường tương ứng dựa trên require_type
             target_field = field_mapping[field][0] if require_type == 'cc' else field_mapping[field][1]
             if target_field and target_field in output_dict:
                 # Gán value
-                output_dict[target_field] = value
+                output_dict[target_field] = value['text']
     
     return output_dict

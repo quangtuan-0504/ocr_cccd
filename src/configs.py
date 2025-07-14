@@ -47,7 +47,7 @@ class Settings(BaseSettings):
         },
         "inference": {
             "conf": YOLO_CONF_THRESHOLD,
-            "iou": 0.5,
+            "iou": 0.4,
             "imgsz": (640, 640),
             "device": "cuda" if torch.cuda.is_available() else "cpu",
             "rect": True,  # Use rectangular inference
@@ -109,7 +109,7 @@ class Settings(BaseSettings):
         },
         "inference": {
             "conf": YOLO_CONF_THRESHOLD,
-            "iou": 0.5,
+            "iou": 0.4,
             "imgsz": (640, 640),
             "device": "cuda" if torch.cuda.is_available() else "cpu",
             "rect": True,  # Use rectangular inference

@@ -177,7 +177,7 @@ class IdCardOCRService:
 
 
 
-    def _detect_cls_text(self, rotated_unwarped_img: np.array)-> dict[int,dict[str,np.array|float]]:
+    def _detect_cls_text(self, rotated_unwarped_img: np.array)-> list[dict[str,np.array|float|int]]:
         """
         
         """
@@ -185,7 +185,7 @@ class IdCardOCRService:
             source = rotated_unwarped_img,
             **settings.yolo_textdetcls_configs['inference'] 
         )
-        fieldname_textregion_score = {}
+        fieldname_textregion_score = []
         for i,res in enumerate(results): # duyệt qua từng ảnh, only 1 img
             boxes = res.boxes
             boxes_xyxy = boxes.xyxy.cpu().numpy()  # 2d array [[],[]]
@@ -198,39 +198,45 @@ class IdCardOCRService:
                 cropped_img = rotated_unwarped_img[y_min:y_max, x_min:x_max]
                 cls = classes[j]
                 score = scores[j]
-                if cls in fieldname_textregion_score:
-                    if score > fieldname_textregion_score[cls]['score']:
-                        fieldname_textregion_score[cls] = {
-                            'text_region': cropped_img,
-                            'score': score
-                        }
-                else:
-                    fieldname_textregion_score[cls]  = {
+                fieldname_textregion_score.append(
+                    {
+                        'field': cls,
                         'text_region': cropped_img,
-                        'score': score
+                        'score': score,
+                        'y_min': y_min # dùng y_min vì mình muốn sắp theo thứ tự từ trên xuống.
                     }
+                )
+            
         
         return fieldname_textregion_score
 
 
 
 
-    def _extract_text(self, fieldname_textregion_score: dict[str,dict[str,np.array|float]]) -> List[Tuple[str,str]]:
+    def _extract_text(self, fieldname_textregion_score: list[dict[str,np.array|float|int]]) -> dict[str,dict[str,str|int]]:
         """
 
         """
         try:
-            field_text = []
-            for cls,textregion_score in fieldname_textregion_score.items():
+            field_text = {}
+            for ele in fieldname_textregion_score:
+                cls = ele['field']
+                y_min = ele['y_min']
                 # Chuyển đổi sang định dạng PIL để đưa vào VietOCR
-                cropped_img_pil = Image.fromarray(cv2.cvtColor(textregion_score['text_region'], cv2.COLOR_BGR2RGB))
-
+                cropped_img_pil = Image.fromarray(cv2.cvtColor(ele['text_region'], cv2.COLOR_BGR2RGB))
                 # Nhận diện văn bản bằng VietOCR
                 vietocr_text = self.rec_model.predict(cropped_img_pil)
 
-                field_text.append(
-                    (self.CLASS_FIELD_NAME[cls],vietocr_text)
-                )
+                str_cls = self.CLASS_FIELD_NAME[cls]
+                if str_cls in field_text:
+                    if y_min > field_text[str_cls]['y_min']:
+                        field_text[str_cls]['text'] = field_text[str_cls]['text'] + ' ' + vietocr_text
+                    else:
+                        field_text[str_cls]['text'] = vietocr_text + ' ' + field_text[str_cls]['text']
+
+                else:
+                    field_text[str_cls] = {'text':vietocr_text, 'y_min': y_min}
+                
             return field_text
         except Exception as e:
             return {"error": f"Lỗi khi trích xuất văn bản: {str(e)}"}
@@ -277,7 +283,8 @@ class IdCardOCRService:
             text_regions = self._detect_cls_text(rotated_unwarped_img=unwarped_img)
             # Trích xuất văn bản
             field_text = self._extract_text(text_regions)
-
+            if "error" in field_text:
+                return {"status": "error", "message": field_text["error"]}
 
             # map field của từng loại thẻ
             map_field_text = map_text2card(
