@@ -116,7 +116,9 @@ class IdCardOCRService:
             # Cắt ảnh theo hộp OBB
             cropped_image = crop_and_rotate_image(image_np, best_box)
             
-           
+            logger.infor(
+                "class": self.CLASS_CARD_NAMES[best_class]
+            )
             return cropped_image, {
                 "class": self.CLASS_CARD_NAMES[best_class],
                 "confidence": float(best_score)
@@ -139,7 +141,7 @@ class IdCardOCRService:
         output_orientation_cls = self.imgorient_model.predict(input=cropped_image, **settings.paddle_imgorient_configs['inference'])
         orientation = output_orientation_cls[0]['label_names'][0] # 0, 90, 180, 270, các góc đo quay theo chiều dương(ngược kim đồng hồ), 
         # ảnh ở góc 0 độ là ảnh ntn ... hình dung đường tròn lượng giác đơn vị là ra.
-
+        logger.info('orientation:', orientation)
         # Khởi tạo ảnh gốc từ mảng numpy
         img_corrected = cropped_image
         
@@ -172,12 +174,12 @@ class IdCardOCRService:
         )
 
         img_unwarped = output_unwarp[0]['doctr_img']
-
+        logger.info('img_unwarped shape:', img_unwarped.shape)
         return img_unwarped
 
 
 
-    def _detect_cls_text(self, rotated_unwarped_img: np.array)-> list[dict[str,np.array|float|int]]:
+    def _detect_cls_text(self, rotated_unwarped_img: np.array)-> list[dict[str,any]]:
         """
         
         """
@@ -213,21 +215,22 @@ class IdCardOCRService:
 
 
 
-    def _extract_text(self, fieldname_textregion_score: list[dict[str,np.array|float|int]]) -> dict[str,dict[str,str|int]]:
+    def _extract_text(self, fieldname_textregion_score: list[dict[str,any]]) -> dict[str,dict[str,str|int]]:
         """
 
         """
         try:
             field_text = {}
             for ele in fieldname_textregion_score:
-                cls = ele['field']
+                cls_ = ele['field']
                 y_min = ele['y_min']
                 # Chuyển đổi sang định dạng PIL để đưa vào VietOCR
                 cropped_img_pil = Image.fromarray(cv2.cvtColor(ele['text_region'], cv2.COLOR_BGR2RGB))
                 # Nhận diện văn bản bằng VietOCR
                 vietocr_text = self.rec_model.predict(cropped_img_pil)
 
-                str_cls = self.CLASS_FIELD_NAME[cls]
+                str_cls = self.CLASS_FIELD_NAME[cls_]
+                print("filed:", str_cls)
                 if str_cls in field_text:
                     if y_min > field_text[str_cls]['y_min']:
                         field_text[str_cls]['text'] = field_text[str_cls]['text'] + ' ' + vietocr_text

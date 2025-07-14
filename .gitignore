@@ -1,1 +1,4 @@
 *.env
+*model/
+*__pycache__/
+*yolo11n-obb.pt
