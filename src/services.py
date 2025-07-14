@@ -116,8 +116,8 @@ class IdCardOCRService:
             # Cắt ảnh theo hộp OBB
             cropped_image = crop_and_rotate_image(image_np, best_box)
             
-            logger.infor(
-                "class": self.CLASS_CARD_NAMES[best_class]
+            logger.info(
+                "class:", self.CLASS_CARD_NAMES[best_class]
             )
             return cropped_image, {
                 "class": self.CLASS_CARD_NAMES[best_class],
@@ -193,6 +193,7 @@ class IdCardOCRService:
             boxes_xyxy = boxes.xyxy.cpu().numpy()  # 2d array [[],[]]
             scores = boxes.conf.cpu().numpy()  # 1d array
             classes = boxes.cls.cpu().numpy().astype(int) # 1d array
+            logger.info("field be detected:", list(map(lambda x: self.CLASS_FIELD_NAME[x], classes)))
             # Lặp qua từng bounding box để cắt vùng ảnh
             for j, box in enumerate(boxes_xyxy):
                 x_min, y_min, x_max, y_max = map(int, box)  # Chuyển đổi sang số nguyên
@@ -223,14 +224,15 @@ class IdCardOCRService:
             field_text = {}
             for ele in fieldname_textregion_score:
                 cls_ = ele['field']
+                str_cls = self.CLASS_FIELD_NAME[cls_]
+                logger.info("filed:", str_cls)
                 y_min = ele['y_min']
                 # Chuyển đổi sang định dạng PIL để đưa vào VietOCR
                 cropped_img_pil = Image.fromarray(cv2.cvtColor(ele['text_region'], cv2.COLOR_BGR2RGB))
                 # Nhận diện văn bản bằng VietOCR
                 vietocr_text = self.rec_model.predict(cropped_img_pil)
 
-                str_cls = self.CLASS_FIELD_NAME[cls_]
-                print("filed:", str_cls)
+               
                 if str_cls in field_text:
                     if y_min > field_text[str_cls]['y_min']:
                         field_text[str_cls]['text'] = field_text[str_cls]['text'] + ' ' + vietocr_text
