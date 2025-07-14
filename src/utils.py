@@ -152,16 +152,16 @@ def map_text2card(fieldname_text:  dict[str,dict[str,str|int]], require_type: st
     
     # Ánh xạ từ FIELD_CLASS sang tên trường trong dictionary đầu ra
     field_mapping = {
-        'id number': ["Số định danh cá nhân / Personal identification number", "Số / No."],
-        'full name': ["Họ, chữ đệm và tên khai sinh / Full name", "Họ và tên / Full name"],
-        'date of birth': ["Ngày, tháng, năm sinh / Date of birth", "Ngày sinh / Date of birth"],
-        'sex': ["Giới tính / Sex", "Giới tính / Sex"],
-        'nationality': ["Quốc tịch / Nationality", "Quốc tịch / Nationality"],
-        'place of origin': ["", "Quê quán / Place of origin"],
-        'place of residence': ["", "Nơi thường trú / Place of residence"],
-        'date of expiry': ["", "Có giá trị đến / Date of expiry"]
+        'id': ["Số định danh cá nhân / Personal identification number", "Số / No."],
+        'name': ["Họ, chữ đệm và tên khai sinh / Full name", "Họ và tên / Full name"],
+        'date_of_birth': ["Ngày, tháng, năm sinh / Date of birth", "Ngày sinh / Date of birth"],
+        'gender': ["Giới tính / Sex", "Giới tính / Sex"],
+        'nation': ["Quốc tịch / Nationality", "Quốc tịch / Nationality"],
+        'hometown': ["", "Quê quán / Place of origin"],
+        'permanent_residence': ["", "Nơi thường trú / Place of residence"],
+        'date_of_expiry': ["", "Có giá trị đến / Date of expiry"]
     }
-    
+    print("fieldname_text:", fieldname_text)
     # Duyệt qua fieldname_text để gán giá trị vào dictionary đầu ra
     for field, value in fieldname_text.items():
         if field in field_mapping:

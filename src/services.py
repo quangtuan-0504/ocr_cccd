@@ -193,7 +193,7 @@ class IdCardOCRService:
             boxes_xyxy = boxes.xyxy.cpu().numpy()  # 2d array [[],[]]
             scores = boxes.conf.cpu().numpy()  # 1d array
             classes = boxes.cls.cpu().numpy().astype(int) # 1d array
-            logger.info("field be detected:", list(map(lambda x: self.CLASS_FIELD_NAME[x], classes)))
+            logger.info("field be detected:", list(map(lambda x: self.CLASS_FIELD_NAME[int(x)], classes)))
             # Lặp qua từng bounding box để cắt vùng ảnh
             for j, box in enumerate(boxes_xyxy):
                 x_min, y_min, x_max, y_max = map(int, box)  # Chuyển đổi sang số nguyên

@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     app_name: str = "OCR identification card application"
 
     # YoloObb Configuration
-    YOLO_MODEL_PATH: str = "yolo11n-obb.pt"
-    YOLO_CONF_THRESHOLD: float = 0.8
+    YOLO_MODEL_PATH: str = "./model/yolo11n-obb.pt"
+    YOLO_CONF_THRESHOLD: float = 0.5
     # Định nghĩa các lớp thẻ
     CLASS_NAMES: dict = {
         0: "cccd_front",
@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     }
     yolo_cardobb_configs: dict[str, dict[str,any]] = {
         "initial": {
-            "model": YOLO_MODEL_PATH
+            "model": YOLO_MODEL_PATH # nó vào đường dẫn này tìm model, nếu không có thì sẽ tải trên mạng về lưu vô đường dẫn này, rồi từ đây load lên chạy.
         },
         "inference": {
             "conf": YOLO_CONF_THRESHOLD,
@@ -77,14 +77,14 @@ class Settings(BaseSettings):
         }
     }
     FIELD_CLASS: dict[int,str] = {
-        0: 'id number',
-        1: 'full name',
-        2: 'date of birth',
-        3: 'sex',
-        4: 'nationality',
-        6: 'place of origin',
-        7: 'place of residence',
-        8: 'date of expiry'
+        0: 'date_of_birth',
+        1: 'date_of_expiry',
+        2: 'gender',
+        3: 'hometown',
+        4: 'id',
+        5: 'name',
+        6: 'nation',
+        7: 'permanent_residence'
     }
     yolo_textdetcls_configs: dict[str,dict[str,any]] = {
         "initial": {
