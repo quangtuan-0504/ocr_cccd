@@ -141,7 +141,7 @@ class IdCardOCRService:
         orientation = output_orientation_cls[0]['label_names'][0] # 0, 90, 180, 270, các góc đo quay theo chiều dương(ngược kim đồng hồ), 
         # ảnh ở góc 0 độ là ảnh ntn ... hình dung đường tròn lượng giác đơn vị là ra.
         print('orientation:', orientation)
-        logger.info('orientation:', orientation)
+        # logger.info(f'orientation: {orientation}')
         # Khởi tạo ảnh gốc từ mảng numpy
         img_corrected = cropped_image
         
@@ -174,7 +174,8 @@ class IdCardOCRService:
         )
 
         img_unwarped = output_unwarp[0]['doctr_img']
-        logger.info('img_unwarped shape:', img_unwarped.shape)
+        print(img_unwarped.shape)
+        # logger.info(f'img_unwarped shape: {img_unwarped.shape}') # không chuyển về str là ko log ra được đâu => dùng f'{}' để chuyển về str
         return img_unwarped
 
 
@@ -188,13 +189,16 @@ class IdCardOCRService:
             source = rotated_unwarped_img,
             **settings.yolo_textdetcls_configs[required_type]['inference'] 
         )
+        # print(results[0].boxes)
         fieldname_textregion_score = []
         for i,res in enumerate(results): # duyệt qua từng ảnh, only 1 img
             boxes = res.boxes
             boxes_xyxy = boxes.xyxy.cpu().numpy()  # 2d array [[],[]]
             scores = boxes.conf.cpu().numpy()  # 1d array
             classes = boxes.cls.cpu().numpy().astype(int) # 1d array
-            logger.info(f"field be detected: {list(map(lambda x: self.CLASS_FIELD_NAME[int(x)], classes))}")
+            print(f"field be detected: {list(map(lambda x: self.CLASS_FIELD_NAME[required_type][int(x)], classes))}")
+
+            # logger.info(f"field be detected: {list(map(lambda x: self.CLASS_FIELD_NAME[int(x)], classes))}")
             # Lặp qua từng bounding box để cắt vùng ảnh
             for j, box in enumerate(boxes_xyxy):
                 x_min, y_min, x_max, y_max = map(int, box)  # Chuyển đổi sang số nguyên
@@ -226,23 +230,26 @@ class IdCardOCRService:
             for ele in fieldname_textregion_score:
                 cls_ = ele['field']
                 str_cls = self.CLASS_FIELD_NAME[required_type][cls_]
-                logger.info(f"filed:{str_cls}")
+                # logger.info(f"filed:{str_cls}")
+                # print(str_cls)
                 y_min = ele['y_min']
                 score = ele['score'] # score text region det cls
                 # Chuyển đổi sang định dạng PIL để đưa vào VietOCR
                 cropped_img_pil = Image.fromarray(cv2.cvtColor(ele['text_region'], cv2.COLOR_BGR2RGB))
                 # Nhận diện văn bản bằng VietOCR
                 vietocr_text = self.rec_model.predict(cropped_img_pil)
-
-               
+                # print(vietocr_text)
+                
                 if str_cls in field_text:
+                    # print("hehe")
                     if y_min > field_text[str_cls]['y_min']:
                         field_text[str_cls]['text'] = field_text[str_cls]['text'] + ' ' + vietocr_text
                     else:
                         field_text[str_cls]['text'] = vietocr_text + ' ' + field_text[str_cls]['text']
-                    field_text[str_cls]['score'] = (field_text[str_cls]['text']+score)/2
+                    field_text[str_cls]['score'] = (field_text[str_cls]['score']+score)/2
 
                 else:
+                    # print("haha")
                     field_text[str_cls] = {'text':vietocr_text, 'y_min': y_min, 'score': score}
                 
             return field_text

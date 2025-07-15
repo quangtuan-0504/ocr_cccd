@@ -35,7 +35,8 @@ def get_services():
         # chỉ cần sửa 1 chỗ ngay file configs là nó tự động load cả danh sách lên, k phải sửa nhiều nơi.
         yolo_textdetcls_model = {}
         for card_type, cfg in settings.yolo_textdetcls_configs.items():
-            yolo_cardobb_model[card_type] = load_yolo_textdetcls_model(cfg.get('initial', {}))
+            logger.info(f'load yolo textdetcls')
+            yolo_textdetcls_model[card_type] = load_yolo_textdetcls_model(cfg.get('initial', {}))
 
 
         vietocr_rec_model = load_vietocr_rec_model()

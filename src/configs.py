@@ -77,16 +77,6 @@ class Settings(BaseSettings):
         }
     }
     FIELD_CLASS: dict[str,dict[int,str]] = {
-        # toy data
-        # 0: 'date_of_birth',
-        # 1: 'date_of_expiry',
-        # 2: 'gender',
-        # 3: 'hometown',
-        # 4: 'id',
-        # 5: 'name',
-        # 6: 'nation',
-        # 7: 'permanent_residence'
-
         # Real data
         'cc': {
             0: 'id',
@@ -100,16 +90,26 @@ class Settings(BaseSettings):
             9: 'date_of_expiry'
         },
         'cccd': {
-            0: 'id',
-            2: 'name',
-            3: 'date_of_birth',
-            4: 'sex',
-            5: 'nation',
-            6: 'place_of_origin',
-            7: 'place_of_residence',
-            8: 'date_of_expiry',
-            9: 'personal_iden',
-            10: 'date_of_issue'
+            # 0: 'id',
+            # 2: 'name',
+            # 3: 'date_of_birth',
+            # 4: 'sex',
+            # 5: 'nation',
+            # 6: 'place_of_origin',
+            # 7: 'place_of_residence',
+            # 8: 'date_of_expiry',
+            # 9: 'personal_iden',
+            # 10: 'date_of_issue'
+
+            # toy data
+            0: 'date_of_birth',
+            1: 'date_of_expiry',
+            2: 'gender',
+            3: 'hometown',
+            4: 'id',
+            5: 'name',
+            6: 'nation',
+            7: 'permanent_residence'
         }
     }
     yolo_textdetcls_configs: dict[str,dict[str,any]] = {

@@ -23,8 +23,8 @@ def load_paddle_imgorient_model(configs: dict = None)-> DocImgOrientationClassif
     """
     try:
         model = DocImgOrientationClassification(
-            **configs
-            # model_name="PP-LCNet_x1_0_doc_ori"
+            # **configs
+            model_name="PP-LCNet_x1_0_doc_ori"
         )
         return model
     except Exception as e:
@@ -35,8 +35,8 @@ def load_paddle_imgunwarp_model(configs: dict = None)-> TextImageUnwarping:
     """
     try:
         model = TextImageUnwarping(
-            **configs
-            # model_name="UVDoc"
+            # **configs
+            model_name="UVDoc"
         )
         return model
     except Exception as e:
