@@ -76,7 +76,7 @@ class Settings(BaseSettings):
            "batch_size": 1
         }
     }
-    FIELD_CLASS: dict[int,str] = {
+    FIELD_CLASS: dict[str,dict[int,str]] = {
         # toy data
         # 0: 'date_of_birth',
         # 1: 'date_of_expiry',
@@ -113,30 +113,59 @@ class Settings(BaseSettings):
         }
     }
     yolo_textdetcls_configs: dict[str,dict[str,any]] = {
-        "initial": {
-            "model": "/workspace/ocr_cccd/model/best.pt"
+        "cc": {
+            "initial": {
+                "model": "/workspace/ocr_cccd/model/best.pt"
+            },
+            "inference": {
+                "conf": YOLO_CONF_THRESHOLD,
+                "iou": 0.3,
+                "imgsz": (640, 640),
+                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "rect": True,  # Use rectangular inference
+                "half":	False,
+                "batch": 1,	
+                "max_det": 10,
+                "vid_stride": 1,
+                "stream_buffer": False,
+                "visualize": False,
+                "augment": False,
+                "agnostic_nms":	False,
+                "classes": None,
+                "retina_masks":	False,	
+                "embed": None,	
+                "project":	None,
+                "name":	None,
+                "stream": False,	
+                "verbose": False ,  
+            }
         },
-        "inference": {
-            "conf": YOLO_CONF_THRESHOLD,
-            "iou": 0.3,
-            "imgsz": (640, 640),
-            "device": "cuda" if torch.cuda.is_available() else "cpu",
-            "rect": True,  # Use rectangular inference
-            "half":	False,
-            "batch": 1,	
-            "max_det": 10,
-            "vid_stride": 1,
-            "stream_buffer": False,
-            "visualize": False,
-            "augment": False,
-            "agnostic_nms":	False,
-            "classes": None,
-            "retina_masks":	False,	
-            "embed": None,	
-            "project":	None,
-            "name":	None,
-            "stream": False,	
-            "verbose": False ,  
+        "cccd": {
+            "initial": {
+                "model": "/workspace/ocr_cccd/model/best.pt"
+            },
+            "inference": {
+                "conf": YOLO_CONF_THRESHOLD,
+                "iou": 0.3,
+                "imgsz": (640, 640),
+                "device": "cuda" if torch.cuda.is_available() else "cpu",
+                "rect": True,  # Use rectangular inference
+                "half":	False,
+                "batch": 1,	
+                "max_det": 10,
+                "vid_stride": 1,
+                "stream_buffer": False,
+                "visualize": False,
+                "augment": False,
+                "agnostic_nms":	False,
+                "classes": None,
+                "retina_masks":	False,	
+                "embed": None,	
+                "project":	None,
+                "name":	None,
+                "stream": False,	
+                "verbose": False ,  
+            }
         }
     }
 

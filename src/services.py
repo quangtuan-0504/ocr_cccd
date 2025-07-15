@@ -49,7 +49,7 @@ class IdCardOCRService:
         cardobb_model: YOLO,
         imgorient_model: DocImgOrientationClassification,
         imgunwarp_model: TextImageUnwarping,
-        textdetcls_model: YOLO,
+        textdetcls_model: dict[str, YOLO],
         rec_model: Predictor
     ):
         """
@@ -141,6 +141,7 @@ class IdCardOCRService:
         output_orientation_cls = self.imgorient_model.predict(input=cropped_image, **settings.paddle_imgorient_configs['inference'])
         orientation = output_orientation_cls[0]['label_names'][0] # 0, 90, 180, 270, các góc đo quay theo chiều dương(ngược kim đồng hồ), 
         # ảnh ở góc 0 độ là ảnh ntn ... hình dung đường tròn lượng giác đơn vị là ra.
+        print('orientation:', orientation)
         logger.info('orientation:', orientation)
         # Khởi tạo ảnh gốc từ mảng numpy
         img_corrected = cropped_image
@@ -179,13 +180,14 @@ class IdCardOCRService:
 
 
 
-    def _detect_cls_text(self, rotated_unwarped_img: np.array)-> list[dict[str,any]]:
+    def _detect_cls_text(self, rotated_unwarped_img: np.array, required_type: str)-> list[dict[str,any]]:
         """
         
         """
-        results = self.textdetcls_model.predict(
+
+        results = self.textdetcls_model[required_type].predict(
             source = rotated_unwarped_img,
-            **settings.yolo_textdetcls_configs['inference'] 
+            **settings.yolo_textdetcls_configs[required_type]['inference'] 
         )
         fieldname_textregion_score = []
         for i,res in enumerate(results): # duyệt qua từng ảnh, only 1 img
@@ -193,7 +195,7 @@ class IdCardOCRService:
             boxes_xyxy = boxes.xyxy.cpu().numpy()  # 2d array [[],[]]
             scores = boxes.conf.cpu().numpy()  # 1d array
             classes = boxes.cls.cpu().numpy().astype(int) # 1d array
-            logger.info("field be detected:", list(map(lambda x: self.CLASS_FIELD_NAME[int(x)], classes)))
+            logger.info(f"field be detected: {list(map(lambda x: self.CLASS_FIELD_NAME[int(x)], classes))}")
             # Lặp qua từng bounding box để cắt vùng ảnh
             for j, box in enumerate(boxes_xyxy):
                 x_min, y_min, x_max, y_max = map(int, box)  # Chuyển đổi sang số nguyên
@@ -216,7 +218,7 @@ class IdCardOCRService:
 
 
 
-    def _extract_text(self, fieldname_textregion_score: list[dict[str,any]]) -> dict[str,dict[str,str|int]]:
+    def _extract_text(self, fieldname_textregion_score: list[dict[str,any]], required_type:str) -> dict[str,dict[str,str|int|float]]:
         """
 
         """
@@ -224,9 +226,10 @@ class IdCardOCRService:
             field_text = {}
             for ele in fieldname_textregion_score:
                 cls_ = ele['field']
-                str_cls = self.CLASS_FIELD_NAME[cls_]
-                logger.info("filed:", str_cls)
+                str_cls = self.CLASS_FIELD_NAME[required_type][cls_]
+                logger.info(f"filed:{str_cls}")
                 y_min = ele['y_min']
+                score = ele['score'] # score text region det cls
                 # Chuyển đổi sang định dạng PIL để đưa vào VietOCR
                 cropped_img_pil = Image.fromarray(cv2.cvtColor(ele['text_region'], cv2.COLOR_BGR2RGB))
                 # Nhận diện văn bản bằng VietOCR
@@ -238,9 +241,10 @@ class IdCardOCRService:
                         field_text[str_cls]['text'] = field_text[str_cls]['text'] + ' ' + vietocr_text
                     else:
                         field_text[str_cls]['text'] = vietocr_text + ' ' + field_text[str_cls]['text']
+                    field_text[str_cls]['score'] = (field_text[str_cls]['text']+score)/2
 
                 else:
-                    field_text[str_cls] = {'text':vietocr_text, 'y_min': y_min}
+                    field_text[str_cls] = {'text':vietocr_text, 'y_min': y_min, 'score': score}
                 
             return field_text
         except Exception as e:
@@ -285,9 +289,9 @@ class IdCardOCRService:
             rotated_img = self._rotate_card(cropped_image=cropped_image)
             unwarped_img = self._unwarp_card(rotated_image=rotated_img)
 
-            text_regions = self._detect_cls_text(rotated_unwarped_img=unwarped_img)
+            text_regions = self._detect_cls_text(rotated_unwarped_img=unwarped_img, required_type = required_type)
             # Trích xuất văn bản
-            field_text = self._extract_text(text_regions)
+            field_text = self._extract_text(text_regions, required_type= required_type)
             if "error" in field_text:
                 return {"status": "error", "message": field_text["error"]}
 
