@@ -125,64 +125,55 @@ def crop_and_rotate_image(image: np.ndarray, box: np.ndarray):
 def map_text2card(fieldname_text:  dict[str,dict[str,str|int|float]], require_type: str, require_side: str)-> dict[str,str]:
     # Định nghĩa các dictionary cho cc và cccd
     cc_front_fields = {
-        "Số định danh cá nhân / Personal identification number": "",
-        "Họ, chữ đệm và tên khai sinh / Full name": "",
-        "Ngày, tháng, năm sinh / Date of birth": "",
-        "Giới tính / Sex": "",
-        "Quốc tịch / Nationality": ""
+        'id' : "Số định danh cá nhân / Personal identification number",
+        'name': "Họ, chữ đệm và tên khai sinh / Full name",
+        'date_of_birth' :"Ngày, tháng, năm sinh / Date of birth",
+        'sex' :"Giới tính / Sex",
+        'nation' :"Quốc tịch / Nationality"
     }
     cc_back_fields = {
-        "Nơi cư trú / Place of residence": "",
-        "Nơi đăng ký khai sinh / Place of birth": "",
-        "Ngày, tháng, năm cấp / Date of issue": "",
-        "Ngày, tháng, năm hết hạn / Date of expiry": ""
+        'place_of_residence' :"Nơi cư trú / Place of residence",
+        'place_of_birth' :"Nơi đăng ký khai sinh / Place of birth",
+        'date_of_issue' :"Ngày, tháng, năm cấp / Date of issue",
+        'date_of_expiry' :"Ngày, tháng, năm hết hạn / Date of expiry"
     }
     cccd_front_fields = {
-        "Số / No.": "",
-        "Họ và tên / Full name": "",
-        "Ngày sinh / Date of birth": "",
-        "Giới tính / Sex": "",
-        "Quốc tịch / Nationality": "",
-        "Quê quán / Place of origin": "",
-        "Nơi thường trú / Place of residence": "",
-        "Có giá trị đến / Date of expiry": ""
+        'id': "Số / No.",
+        'name':"Họ và tên / Full name",
+        'date_of_birth':"Ngày sinh / Date of birth",
+        'sex':"Giới tính / Sex",
+        'nation':"Quốc tịch / Nationality",
+        'place_of_origin':"Quê quán / Place of origin",
+        'place_of_residence':"Nơi thường trú / Place of residence",
+        'date_of_expiry':"Có giá trị đến / Date of expiry"
     }
     cccd_back_fields = {
-        "Đặc điểm nhận dạng / Personal identification": "",
-        "Ngày, tháng, năm / Date, month, year": ""
+        'personal_iden':"Đặc điểm nhận dạng / Personal identification",
+        'date_of_issue':"Ngày, tháng, năm / Date, month, year"
     }
     
     # Chọn dictionary đầu ra dựa trên require_type và require_side
     if require_type == 'cc' and require_side == 'front':
-        output_dict = cc_front_fields.copy()
-        field_mapping = {
-            'id': ["Số định danh cá nhân / Personal identification number", "Số / No."],
-            'name': ["Họ, chữ đệm và tên khai sinh / Full name", "Họ và tên / Full name"],
-            'date_of_birth': ["Ngày, tháng, năm sinh / Date of birth", "Ngày sinh / Date of birth"],
-            'gender': ["Giới tính / Sex", "Giới tính / Sex"],
-            'nation': ["Quốc tịch / Nationality", "Quốc tịch / Nationality"],
-            'hometown': ["", "Quê quán / Place of origin"],
-            'permanent_residence': ["", "Nơi thường trú / Place of residence"],
-            'date_of_expiry': ["", "Có giá trị đến / Date of expiry"]
-        }
+        field_mapping = cc_front_fields.copy()
     elif require_type == 'cccd' and require_side == 'front':
-        output_dict = cccd_front_fields.copy()
+        field_mapping = cccd_front_fields.copy()
     elif require_type == 'cc' and require_side == 'back':
-        output_dict = cc_back_fields.copy()
+        field_mapping = cc_back_fields.copy()
     elif require_type == 'cccd' and require_side == 'back':
-        output_dict = cccd_back_fields.copy()
+        field_mapping = cccd_back_fields.copy()
     else:
         raise ValueError("Invalid require_type or require_side. Use 'cc' or 'cccd' for type and 'front' for side.")
     
 
     print("fieldname_text:", fieldname_text)
+    output_dict = {}
+    for field in field_mapping.values():
+        output_dict[field] = ""
     # Duyệt qua fieldname_text để gán giá trị vào dictionary đầu ra
     for field, value in fieldname_text.items():
         if field in field_mapping:
             # Chọn tên trường tương ứng dựa trên require_type
-            target_field = field_mapping[field][0] if require_type == 'cc' else field_mapping[field][1]
-            if target_field and target_field in output_dict:
-                # Gán value
-                output_dict[target_field] = value['text']
+            target_field = field_mapping[field]
+            output_dict[target_field] = value['text']
     
     return output_dict

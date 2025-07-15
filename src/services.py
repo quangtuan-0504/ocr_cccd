@@ -89,9 +89,8 @@ class IdCardOCRService:
                 logger.warning("Không phát hiện được thẻ trong ảnh, trả về ảnh gốc, nhớ dùng ảnh chụp sát góc để test.")
                 # Trả về ảnh gốc và thông tin giả định
                 return image_np, {
-                    "class": "cccd_front_correct",
+                    "class": "cccd_front",
                     "confidence": 0.9,
-                    "is_inverted": False
                 }   
             
             # Lấy kết quả OBB
