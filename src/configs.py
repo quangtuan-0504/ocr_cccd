@@ -30,13 +30,13 @@ class Settings(BaseSettings):
         },
         "inference": {
             "conf": YOLO_CONF_THRESHOLD,
-            "iou": 0.4,
+            "iou": 0.3,
             "imgsz": (640, 640),
             "device": "cuda" if torch.cuda.is_available() else "cpu",
             "rect": True,  # Use rectangular inference
             "half":	False,
             "batch": 1,	
-            "max_det": 300,
+            "max_det": 10,
             "vid_stride": 1,
             "stream_buffer": False,
             "visualize": False,
@@ -54,7 +54,7 @@ class Settings(BaseSettings):
 
     paddle_imgorient_configs: dict[str,dict[str,any]] = {
         "initial": {
-            "model_name	": None, #"PP-LCNet_x1_0_doc_ori",
+            "model_name": "PP-LCNet_x1_0_doc_ori",
             "model_dir": "",
             "device": "gpu",
             "enable_hpi": False,
@@ -66,7 +66,7 @@ class Settings(BaseSettings):
 
     paddle_imgunwarp_configs: dict[str,dict[str,any]] = {
         "initial": {
-            "model_name	": "UVDoc",
+            "model_name": "UVDoc",
             "model_dir": "",
             "device": "gpu",
             "enable_hpi": False,
@@ -77,14 +77,40 @@ class Settings(BaseSettings):
         }
     }
     FIELD_CLASS: dict[int,str] = {
-        0: 'date_of_birth',
-        1: 'date_of_expiry',
-        2: 'gender',
-        3: 'hometown',
-        4: 'id',
-        5: 'name',
-        6: 'nation',
-        7: 'permanent_residence'
+        # toy data
+        # 0: 'date_of_birth',
+        # 1: 'date_of_expiry',
+        # 2: 'gender',
+        # 3: 'hometown',
+        # 4: 'id',
+        # 5: 'name',
+        # 6: 'nation',
+        # 7: 'permanent_residence'
+
+        # Real data
+        'cc': {
+            0: 'id',
+            2: 'name',
+            3: 'date_of_birth',
+            4: 'sex',
+            5: 'nation',
+            6: 'place_of_residence',
+            7: 'place_of_birth',
+            8: 'date_of_issue',
+            9: 'date_of_expiry'
+        },
+        'cccd': {
+            0: 'id',
+            2: 'name',
+            3: 'date_of_birth',
+            4: 'sex',
+            5: 'nation',
+            6: 'place_of_origin',
+            7: 'place_of_residence',
+            8: 'date_of_expiry',
+            9: 'personal_iden',
+            10: 'date_of_issue'
+        }
     }
     yolo_textdetcls_configs: dict[str,dict[str,any]] = {
         "initial": {
@@ -92,13 +118,13 @@ class Settings(BaseSettings):
         },
         "inference": {
             "conf": YOLO_CONF_THRESHOLD,
-            "iou": 0.4,
+            "iou": 0.3,
             "imgsz": (640, 640),
             "device": "cuda" if torch.cuda.is_available() else "cpu",
             "rect": True,  # Use rectangular inference
             "half":	False,
             "batch": 1,	
-            "max_det": 300,
+            "max_det": 10,
             "vid_stride": 1,
             "stream_buffer": False,
             "visualize": False,

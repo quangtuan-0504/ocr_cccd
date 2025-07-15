@@ -131,6 +131,12 @@ def map_text2card(fieldname_text:  dict[str,dict[str,str|int]], require_type: st
         "Giới tính / Sex": "",
         "Quốc tịch / Nationality": ""
     }
+    cc_back_fields = {
+        "Nơi cư trú / Place of residence": "",
+        "Nơi đăng ký khai sinh / Place of birth": "",
+        "Ngày, tháng, năm cấp / Date of issue": "",
+        "Ngày, tháng, năm hết hạn / Date of expiry": ""
+    }
     cccd_front_fields = {
         "Số / No.": "",
         "Họ và tên / Full name": "",
@@ -141,16 +147,25 @@ def map_text2card(fieldname_text:  dict[str,dict[str,str|int]], require_type: st
         "Nơi thường trú / Place of residence": "",
         "Có giá trị đến / Date of expiry": ""
     }
+    cccd_back_fields = {
+        "Đặc điểm nhận dạng / Personal identification": "",
+        "Ngày, tháng, năm / Date, month, year": ""
+    }
     
     # Chọn dictionary đầu ra dựa trên require_type và require_side
     if require_type == 'cc' and require_side == 'front':
         output_dict = cc_front_fields.copy()
     elif require_type == 'cccd' and require_side == 'front':
         output_dict = cccd_front_fields.copy()
+    elif require_type == 'cc' and require_side == 'back':
+        output_dict = cc_back_fields.copy()
+    elif require_type == 'cccd' and require_side == 'back':
+        output_dict = cccd_back_fields.copy()
     else:
         raise ValueError("Invalid require_type or require_side. Use 'cc' or 'cccd' for type and 'front' for side.")
     
     # Ánh xạ từ FIELD_CLASS sang tên trường trong dictionary đầu ra
+    # Toy data
     field_mapping = {
         'id': ["Số định danh cá nhân / Personal identification number", "Số / No."],
         'name': ["Họ, chữ đệm và tên khai sinh / Full name", "Họ và tên / Full name"],
@@ -161,6 +176,9 @@ def map_text2card(fieldname_text:  dict[str,dict[str,str|int]], require_type: st
         'permanent_residence': ["", "Nơi thường trú / Place of residence"],
         'date_of_expiry': ["", "Có giá trị đến / Date of expiry"]
     }
+    # Real data
+    # TODO
+    
     print("fieldname_text:", fieldname_text)
     # Duyệt qua fieldname_text để gán giá trị vào dictionary đầu ra
     for field, value in fieldname_text.items():
