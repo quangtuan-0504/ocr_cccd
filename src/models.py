@@ -58,16 +58,13 @@ def load_vietocr_rec_model() -> Predictor:
     Load vietoce for text recognition.
     """
     try:
-        # --- Khởi tạo VietOCR ---
-        config = Cfg.load_config_from_name('vgg_seq2seq')
-        # config['weights'] = 'model/vgg19_bn-c79401a0.pth'  # tải từ VietOCR repo
-        config['device'] = 'cuda'  # hoặc 'cuda' nếu có GPU
+        with open("model/base.yml", encoding = "utf-8") as f:
+            base_cf = yaml.safe_load(f)
+        with open("model/vgg-seq2seq.yml", encoding = "utf-8") as f:
+            cus_cf = yaml.safe_load(f)
+        base_cf.update(cus_cf)
 
-        # --- Lưu config vào file YAML ---
-        with open('model/vietocr_config_cache.yaml', 'w', encoding='utf-8') as f:
-            yaml.dump(config, f, allow_unicode=True)
-
-        vietocr_model = Predictor(config)
+        vietocr_model = Predictor(Cfg(base_cf))
         return vietocr_model
     except Exception as e:
         raise RuntimeError(f"Failed to load image recognition model: {e}")
