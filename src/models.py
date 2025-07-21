@@ -3,7 +3,7 @@ from ultralytics import YOLO
 from vietocr.tool.predictor import Predictor
 from vietocr.tool.config import Cfg
 from configs import settings
-
+import yaml
 
 def load_yolo_cardobb_model(configs: dict = None)-> YOLO:
     """
@@ -23,8 +23,8 @@ def load_paddle_imgorient_model(configs: dict = None)-> DocImgOrientationClassif
     """
     try:
         model = DocImgOrientationClassification(
-            # **configs
-            model_name="PP-LCNet_x1_0_doc_ori"
+            **configs
+            # model_name="PP-LCNet_x1_0_doc_ori"
         )
         return model
     except Exception as e:
@@ -35,8 +35,8 @@ def load_paddle_imgunwarp_model(configs: dict = None)-> TextImageUnwarping:
     """
     try:
         model = TextImageUnwarping(
-            # **configs
-            model_name="UVDoc"
+            **configs
+            # model_name="UVDoc"
         )
         return model
     except Exception as e:
@@ -60,8 +60,13 @@ def load_vietocr_rec_model() -> Predictor:
     try:
         # --- Khởi tạo VietOCR ---
         config = Cfg.load_config_from_name('vgg_seq2seq')
-        # config['weights'] = 'weights/transformerocr.pth'  # tải từ VietOCR repo
+        # config['weights'] = 'model/vgg19_bn-c79401a0.pth'  # tải từ VietOCR repo
         config['device'] = 'cuda'  # hoặc 'cuda' nếu có GPU
+
+        # --- Lưu config vào file YAML ---
+        with open('model/vietocr_config_cache.yaml', 'w', encoding='utf-8') as f:
+            yaml.dump(config, f, allow_unicode=True)
+
         vietocr_model = Predictor(config)
         return vietocr_model
     except Exception as e:

@@ -13,8 +13,15 @@ class Settings(BaseSettings):
 
     app_name: str = "OCR identification card application"
 
+    # Box Validation
+    # Ngưỡng kích thước và tỷ lệ hợp lý
+    MIN_AREA_RATIO: float= 0.1  # Tỷ lệ diện tích tối thiểu của thẻ so với ảnh
+    MAX_AREA_RATIO: float = 0.95  # Tỷ lệ diện tích tối đa
+    ASPECT_RATIO_MIN: float = 1  # Tỷ lệ chiều dài/rộng tối thiểu
+    ASPECT_RATIO_MAX: float = 2.0  # Tỷ lệ chiều dài/rộng tối đa
+
     # YoloObb Configuration
-    YOLO_MODEL_PATH: str = "./model/yolo11n-obb.pt"
+    YOLO_MODEL_PATH: str = "model/det_card/best.pt"
     YOLO_CONF_THRESHOLD: float = 0.5
     # Định nghĩa các lớp thẻ
     CLASS_NAMES: dict = {
@@ -55,7 +62,7 @@ class Settings(BaseSettings):
     paddle_imgorient_configs: dict[str,dict[str,any]] = {
         "initial": {
             "model_name": "PP-LCNet_x1_0_doc_ori",
-            "model_dir": "",
+            "model_dir": "model/PP-LCNet_x1_0_doc_ori",
             "device": "gpu",
             "enable_hpi": False,
         },
@@ -67,7 +74,7 @@ class Settings(BaseSettings):
     paddle_imgunwarp_configs: dict[str,dict[str,any]] = {
         "initial": {
             "model_name": "UVDoc",
-            "model_dir": "",
+            "model_dir": "model/UVDoc",
             "device": "gpu",
             "enable_hpi": False,
 
@@ -119,7 +126,7 @@ class Settings(BaseSettings):
     yolo_textdetcls_configs: dict[str,dict[str,any]] = {
         "cc": {
             "initial": {
-                "model": "/workspace/ocr_cccd/model/best.pt"
+                "model": "model/detcls_text_region/best.pt"
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD,
@@ -146,7 +153,7 @@ class Settings(BaseSettings):
         },
         "cccd": {
             "initial": {
-                "model": "/workspace/ocr_cccd/model/best.pt"
+                "model": "model/detcls_text_region/best.pt"
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD,
