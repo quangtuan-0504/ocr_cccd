@@ -80,26 +80,30 @@ class Settings(BaseSettings):
         # Real data
         'cc': {
             0: 'id',
-            2: 'name',
-            3: 'date_of_birth',
-            4: 'sex',
-            5: 'nation',
-            6: 'place_of_residence',
-            7: 'place_of_birth',
-            8: 'date_of_issue',
-            9: 'date_of_expiry'
+            1: 'name',
+            2: 'date_of_birth',
+            3: 'sex',
+            4: 'nation',
+            5: 'place_of_residence',
+            6: 'place_of_birth',
+            7: 'date_of_issue',
+            8: 'date_of_expiry',
+            9: 'face',
+            10: 'qr'
         },
         'cccd': {
             # 0: 'id',
-            # 2: 'name',
-            # 3: 'date_of_birth',
-            # 4: 'sex',
-            # 5: 'nation',
-            # 6: 'place_of_origin',
-            # 7: 'place_of_residence',
-            # 8: 'date_of_expiry',
-            # 9: 'personal_iden',
-            # 10: 'date_of_issue'
+            # 1: 'name',
+            # 2: 'date_of_birth',
+            # 3: 'sex',
+            # 4: 'nation',
+            # 5: 'place_of_origin',
+            # 6: 'place_of_residence',
+            # 7: 'date_of_expiry',
+            # 8: 'personal_iden',
+            # 9: 'date_of_issue',
+            # 10: 'face',
+            # 11: 'qr'
 
             # toy data
             0: 'date_of_birth',
