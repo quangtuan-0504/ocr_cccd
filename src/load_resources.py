@@ -23,22 +23,17 @@ def get_services():
     """
     resources = {}
     try:
+        logger.info(f'load obb card model')
         yolo_cardobb_model = load_yolo_cardobb_model(settings.yolo_cardobb_configs.get('initial', {}))
-        
+        logger.info(f'load paddle image orientation model')
         paddle_imgorient_model = load_paddle_imgorient_model(settings.paddle_imgorient_configs.get('initial', {}))
-        
-        paddle_imgunwarp_model = load_paddle_imgunwarp_model(settings.paddle_imgunwarp_configs.get('initial', {}))
-
-        # yolo_textdetcls_cc_model = load_yolo_textdetcls_model(settings.yolo_textdetcls_configs['cc'].get('initial', {}))
-        # yolo_textdetcls_cccd_model = load_yolo_textdetcls_model(settings.yolo_textdetcls_configs['cccd'].get('initial', {}))
-        # load từng cái sau này lỡ có card type mới sửa code rất mệt, nên làm như bên dưới.
-        # chỉ cần sửa 1 chỗ ngay file configs là nó tự động load cả danh sách lên, k phải sửa nhiều nơi.
+        logger.info(f'load paddle unwarping image model')
+        paddle_imgunwarp_model = load_paddle_imgunwarp_model(settings.paddle_imgunwarp_configs.get('initial', {}))        
+        logger.info(f'load yolo text region detection model')
         yolo_textdetcls_model = {}
         for card_type, cfg in settings.yolo_textdetcls_configs.items():
-            logger.info(f'load yolo textdetcls')
             yolo_textdetcls_model[card_type] = load_yolo_textdetcls_model(cfg.get('initial', {}))
-
-
+        logger.info(f'load recognition model')
         vietocr_rec_model = load_vietocr_rec_model()
 
         resources['ocr_service'] = IdCardOCRService(
