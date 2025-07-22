@@ -58,13 +58,14 @@ def load_vietocr_rec_model() -> Predictor:
     Load vietoce for text recognition.
     """
     try:
-        with open("model/base.yml", encoding = "utf-8") as f:
+        with open("model/vietocr/base.yml", encoding = "utf-8") as f:
             base_cf = yaml.safe_load(f)
-        with open("model/vgg-seq2seq.yml", encoding = "utf-8") as f:
+        with open("model/vietocr/vgg-seq2seq.yml", encoding = "utf-8") as f:
             cus_cf = yaml.safe_load(f)
         base_cf.update(cus_cf)
-
-        vietocr_model = Predictor(Cfg(base_cf))
+        cf = Cfg(base_cf)
+        # cf['weights'] = 'model/vietocr/vgg_seq2seq.pth'
+        vietocr_model = Predictor(cf)
         return vietocr_model
     except Exception as e:
         raise RuntimeError(f"Failed to load image recognition model: {e}")

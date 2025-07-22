@@ -3,3 +3,5 @@ ultralytics == 8.3.165
 paddleocr == 3.1.0
 paddlepaddle == 3.1.0
 vietocr == 0.3.13
+# pip uninstall torch torch vision
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118

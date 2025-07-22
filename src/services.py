@@ -11,7 +11,8 @@ from utils import (
     validate_image_quality,
     validate_bounding_box,
     crop_and_rotate_image,
-    map_text2card
+    map_text2card,
+    correct_image_orientation
 )
 from exceptions import (
     BadCaptureError,
@@ -151,14 +152,12 @@ class IdCardOCRService:
             if orientation == "180":
                 # Xoay 180 độ
                 img_rotated = cv2.rotate(img_corrected, cv2.ROTATE_180)
-            elif orientation == "270":
+            elif orientation == "90":
                 # Xoay 90 độ ngược chiều kim đồng hồ (tương đương rotate 90 trong PIL)
                 img_rotated = cv2.rotate(img_corrected, cv2.ROTATE_90_COUNTERCLOCKWISE)
-            elif orientation == "90":
+            elif orientation == "270":
                 # Xoay 90 độ theo chiều kim đồng hồ (chiều âm) (tương đương rotate 270 trong PIL)
                 img_rotated = cv2.rotate(img_corrected, cv2.ROTATE_90_CLOCKWISE)
-            else:
-                img_rotated = img_corrected
         else:
             img_rotated = img_corrected
         
@@ -274,27 +273,30 @@ class IdCardOCRService:
             Dict: Kết quả chứa thông tin thẻ và văn bản trích xuất, hoặc thông báo lỗi.
         """
         try:
+            # image.save('analysis_error/img_origin.jpg', quality=95)
+            image_np = np.array(image)
+            cv2.imwrite('analysis_error/img_origin.jpg',image_np)
             # Kiểm tra ảnh đầu vào
             validate_image_quality(image=image)
-
+            image = correct_image_orientation(image=image)
             # Dự đoán và cắt thẻ
             cropped_image, detection_info = self._predict_card(image)
-            
+            cv2.imwrite("analysis_error/img_cropped.jpg",cropped_image)
             if "error" in detection_info:
                 return {"status": "error", "message": detection_info["error"]}
 
             # Kiểm tra loại thẻ và mặt thẻ
             detected_class = detection_info["class"]
-            if required_type not in detected_class:
+            if required_type not in detected_class.split('_'):
                 return {"status": "error", "message": f"Loại thẻ không đúng: yêu cầu {required_type}, phát hiện {detected_class}"}
-            if required_side not in detected_class:
+            if required_side not in detected_class.split('_'):
                 return {"status": "error", "message": f"Mặt thẻ không đúng: yêu cầu {required_side}, phát hiện {detected_class}"}
             if "other_card" in detected_class:
                 return {"status": "error", "message": "Phát hiện thẻ không thuộc loại căn cước hoặc căn cước công dân."}
             
             rotated_img = self._rotate_card(cropped_image=cropped_image)
             unwarped_img = self._unwarp_card(rotated_image=rotated_img)
-
+            cv2.imwrite("analysis_error/img_cropped_rotated_unwarped.jpg",unwarped_img)
             text_regions = self._detect_cls_text(rotated_unwarped_img=unwarped_img, required_type = required_type)
             # Trích xuất văn bản
             field_text = self._extract_text(text_regions, required_type= required_type)

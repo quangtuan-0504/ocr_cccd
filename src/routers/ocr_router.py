@@ -33,7 +33,7 @@ async def ocr_id_card(
                 raise HTTPException(status_code=400, detail="File must be an image")
             
             contents = await file.read()
-            image = Image.open(io.BytesIO(contents)).convert('RGB')
+            image = Image.open(io.BytesIO(contents))
             file_name = file.filename
             
         elif image_base64:
@@ -44,7 +44,7 @@ async def ocr_id_card(
                 base64_data = image_base64
             
             image_data = base64.b64decode(base64_data)
-            image = Image.open(io.BytesIO(image_data)).convert('RGB')
+            image = Image.open(io.BytesIO(image_data))
             
         else:
             raise HTTPException(status_code=400, detail="Vui lòng cung cấp file hoặc base64 string")

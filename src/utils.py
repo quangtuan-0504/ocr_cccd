@@ -1,6 +1,6 @@
 import numpy as np
 import cv2
-from PIL import Image
+from PIL import Image, ExifTags
 from typing import Optional, Tuple, List, Dict
 from exceptions import (
     BadCaptureError,
@@ -52,7 +52,27 @@ def validate_image_quality(image: Image.Image) -> None:
     if len(image_shape) != 3 or image_shape[2] != 3 or image.mode != 'RGB':
         raise ValueError("Ảnh đầu vào phải là ảnh RGB.")
     
-
+def correct_image_orientation(image: Image.Image) -> Image.Image:
+    # Lấy thông tin EXIF
+    if hasattr(image, '_getexif'):
+        print('has exif')
+        # Kiểm tra metadata EXIF để lấy thông tin hướng
+        for orientation_key in ExifTags.TAGS.keys():
+            if ExifTags.TAGS[orientation_key] == 'Orientation':
+                break
+        exif = image._getexif()
+        if exif is not None:
+            orientation = exif.get(orientation_key, 1)
+            print('#####:',orientation)
+            # Xoay ảnh dựa trên giá trị orientation
+            if orientation == 3:
+                image = image.rotate(180, expand=True)
+            elif orientation == 6:
+                image = image.rotate(270, expand=True)
+            elif orientation == 8:
+                image = image.rotate(90, expand=True)
+    image = image.convert('RGB')
+    return image
 
 def validate_bounding_box(bbox:np.array , image_size: Tuple[int, int]) -> None:
     """
@@ -79,48 +99,64 @@ def validate_bounding_box(bbox:np.array , image_size: Tuple[int, int]) -> None:
         raise BadBoxError(f"Tỷ lệ chiều dài/rộng của thẻ không hợp lý do bạn chụp không chính diện: {aspect_ratio:.3f} not in [{settings.ASPECT_RATIO_MIN}, {settings.ASPECT_RATIO_MAX}]")
 
     
-def crop_and_rotate_image(image: np.ndarray, box: np.ndarray):
-        """
-        Crop and rotate the image based on OBB box.
+def crop_and_rotate_image(image: np.ndarray, box: np.ndarray, expand_factor: float = 1.05):
+    """
+    Crop and rotate the image based on OBB box with customizable expansion.
 
-        Args:
-            image: Input image as numpy array
-            box: OBB box [x_center, y_center, width, height, angle]
+    Args:
+        image: Input image as numpy array
+        box: OBB box [x_center, y_center, width, height, angle]
+        expand_factor: Factor to expand the bounding box size (default 1.0 for original size)
 
-        Returns:
-            Cropped and rotated image as numpy array, or None if failed
-        """
-        try:
-            x_center, y_center, width, height, angle = box
-            angle = angle * 180 / np.pi  # Convert radians to degrees
+    Returns:
+        Cropped and rotated image as numpy array, or None if failed
 
-            # Get rotation matrix
-            M = cv2.getRotationMatrix2D((x_center, y_center), angle, 1.0)
+    Nới rộng box theo tỷ lệ chiều rộng/dài
+    """
+    try:
+        x_center, y_center, width, height, angle = box
+        angle = angle * 180 / np.pi  # Convert radians to degrees
+        # if width >= height:
+        #     long_side = width
+        #     short_side = height
+        # else:
+        #     long_side = height
+        #     short_side = width
 
-            # Rotate the image
-            rotated = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
+        # h_img, w_img, _ = image.shape
+        # Apply expansion factor to width and height
+        expanded_width = width * expand_factor
+        expanded_height = height * expand_factor
+        # if w_img/h_img>=0.5:
+        #     expanded_width = expanded_width + expanded_width*0.2
 
-            # Crop the image
-            x1 = int(x_center - width / 2)
-            y1 = int(y_center - height / 2)
-            x2 = int(x_center + width / 2)
-            y2 = int(y_center + height / 2)
+        # Get rotation matrix
+        M = cv2.getRotationMatrix2D((x_center, y_center), angle, 1.0)
 
-            # Ensure coordinates are within image bounds
-            x1 = max(0, x1)
-            y1 = max(0, y1)
-            x2 = min(image.shape[1], x2)
-            y2 = min(image.shape[0], y2)
+        # Rotate the image
+        rotated = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
 
-            cropped = rotated[y1:y2, x1:x2]
+        # Calculate new coordinates with expanded dimensions
+        x1 = int(x_center - expanded_width / 2)
+        y1 = int(y_center - expanded_height / 2)
+        x2 = int(x_center + expanded_width / 2)
+        y2 = int(y_center + expanded_height / 2)
 
-            # Check if cropped image is valid
-            if cropped.size == 0:
-                return None
+        # Ensure coordinates are within image bounds
+        x1 = max(0, x1)
+        y1 = max(0, y1)
+        x2 = min(image.shape[1], x2)
+        y2 = min(image.shape[0], y2)
 
-            return cropped
-        except Exception as e:
-            raise(f"Error in cropping/rotating image: {str(e)}")
+        cropped = rotated[y1:y2, x1:x2]
+
+        # Check if cropped image is valid
+        if cropped.size == 0:
+            return None
+
+        return cropped
+    except Exception as e:
+        raise(f"Error in cropping/rotating image: {str(e)}")
 
 def map_text2card(fieldname_text:  dict[str,dict[str,str|int|float]], require_type: str, require_side: str)-> dict[str,str]:
     # Định nghĩa các dictionary cho cc và cccd
