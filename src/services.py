@@ -183,9 +183,9 @@ class IdCardOCRService:
         """
         
         """
-
+        rotated_unwarped_img_pil = Image.fromarray(rotated_unwarped_img)
         results = self.textdetcls_model[required_type].predict(
-            source = rotated_unwarped_img,
+            source = rotated_unwarped_img_pil,
             **settings.yolo_textdetcls_configs[required_type]['inference'] 
         )
         # print(results[0].boxes)

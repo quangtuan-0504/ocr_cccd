@@ -126,7 +126,7 @@ class Settings(BaseSettings):
     yolo_textdetcls_configs: dict[str,dict[str,any]] = {
         "cc": {
             "initial": {
-                "model": "model/detcls_text_region/best.pt"
+                "model": "model/textdet/cc/best.pt"
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD,
@@ -145,15 +145,16 @@ class Settings(BaseSettings):
                 "classes": None,
                 "retina_masks":	False,	
                 "embed": None,	
-                "project":	None,
-                "name":	None,
+                "project":	'analysis_error',
+                "name":	'cc_det',
                 "stream": False,	
                 "verbose": False ,  
+                "save": True
             }
         },
         "cccd": {
             "initial": {
-                "model": "model/detcls_text_region/best.pt"
+                "model": "model/textdet/cccd/best.pt"
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD,
@@ -172,14 +173,20 @@ class Settings(BaseSettings):
                 "classes": None,
                 "retina_masks":	False,	
                 "embed": None,	
-                "project":	None,
-                "name":	None,
+                "project":	'analysis_error',
+                "name":	'cccd_det',
                 "stream": False,	
                 "verbose": False ,  
+                "save": True
             }
         }
     }
 
+    vietocr_configs: dict[str,str] = {
+        'model_path': 'model/vietocr/vgg_seq2seq.pth',
+        'base_cf': 'model/vietocr/base.yml',
+        'cf': 'model/vietocr/vgg-seq2seq.yml'
+    }
    
 settings = Settings()
 
