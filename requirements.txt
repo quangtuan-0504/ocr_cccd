@@ -5,3 +5,26 @@ paddlepaddle == 3.1.0
 vietocr == 0.3.13
 # pip uninstall torch torch vision
 # pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu118
+
+
+# env run paddle on gpu
+# NVIDIA-SMI 570.133.07             Driver Version: 570.133.07     CUDA Version: 12.8
+# conda create -n ocr python=3.11 -y
+# pip install paddleocr==3.1.0
+# python -m pip install paddlepaddle-gpu==3.1.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
+
+# pip install vietocr==0.3.13
+# pip install torch torchvision --index-url https://download.pytorch.org/whl/cu118 --no-deps
+
+######################## vietocr
+Traceback (most recent call last):
+  File "/workspace/ocr_cccd/test.py", line 18, in <module>
+    from vietocr.tool.predictor import Predictor
+  File "/opt/conda/envs/ocr2/lib/python3.11/site-packages/vietocr/tool/predictor.py", line 1, in <module>
+    from vietocr.tool.translate import build_model, translate, translate_beam_search, process_input, predict
+  File "/opt/conda/envs/ocr2/lib/python3.11/site-packages/vietocr/tool/translate.py", line 1, in <module>
+    import torch
+  File "/opt/conda/envs/ocr2/lib/python3.11/site-packages/torch/__init__.py", line 409, in <module>
+    from torch._C import *  # noqa: F403
+    ^^^^^^^^^^^^^^^^^^^^^^
+ImportError: libcudnn.so.9: cannot open shared object file: No such file or directory

@@ -1,19 +1,20 @@
-# from paddleocr import DocImgOrientationClassification, TextImageUnwarping
+from paddleocr import DocImgOrientationClassification, TextImageUnwarping
 
 
 
 
-# model = DocImgOrientationClassification(
-#     model_name= "PP-LCNet_x1_0_doc_ori",
-#     model_dir= "model/PP-LCNet_x1_0_doc_ori",
-# )
+model = DocImgOrientationClassification(
+    model_name= "PP-LCNet_x1_0_doc_ori",
+    model_dir= "toy_model_ocr_cccd/PP-LCNet_x1_0_doc_ori",
+    device = "gpu"
+)
 
 # model = TextImageUnwarping(
 #     model_name= "UVDoc",
 #     model_dir= "model/UVDoc",
 # )
 
-
+print('######################## vietocr')
 from vietocr.tool.predictor import Predictor
 from vietocr.tool.config import Cfg
 import yaml
