@@ -1,17 +1,13 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import logging
-from contextlib import asynccontextmanager
 import sys
 import os
-sys.path.append(os.path.abspath(os.path.join(
-    os.path.dirname(__file__))))
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 from logger import logger
 from configs import settings
 from load_resources import app_lifespan
 from routers import ocr_router
-
-
 
 logger.info("Starting OCR identification card application...")
 app = FastAPI(
@@ -30,17 +26,15 @@ app.add_middleware(
     allow_headers=["*"],  
 )
 
-
 app.include_router(ocr_router.router)
 
 @app.get("/")
 async def root():
     """Root endpoint"""
-    return {"message": f"Welcom to {settings.app_name}"}
+    return {"message": f"Welcome to {settings.app_name}"}
 
 if __name__ == "__main__":
     import uvicorn
-
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 

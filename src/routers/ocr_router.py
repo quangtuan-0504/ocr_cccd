@@ -1,36 +1,45 @@
-from fastapi import FastAPI, APIRouter, File, UploadFile, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, File, UploadFile, HTTPException
+from typing import Optional
 import base64
 import io
 from PIL import Image
-import os
-from typing import Optional
-from load_resources import resources
 import time
 from logger import logger
+from load_resources import resources
+from schemas import OCRResponse
 
 
 router = APIRouter(
     prefix="/ocr-id-card",
     tags=["OCR"]
 )
-@router.post("/upload-image-flexible", response_model=dict)
+
+@router.post("/upload-image-flexible", response_model=OCRResponse)
 async def ocr_id_card(
     file: Optional[UploadFile] = File(None),
     image_base64: Optional[str] = None,
-    card_type: str|None = None,
-    card_side: str|None = None,
-    file_name: str|None = "image.jpg"
+    card_type: Optional[str] = None,
+    card_side: Optional[str] = None,
+    file_name: Optional[str] = "image.jpg"
 ):
     """
-    Endpoint flexible - can be received both file or base64 string
+    Process an ID card image and extract information.
+    
+    Parameters:
+    - file: Image file upload
+    - image_base64: Base64 encoded image string
+    - card_type: Type of card (cccd, cc)
+    - card_side: Side of card (front, back)
+    - file_name: Name of file (used when image_base64 is provided)
+    
+    Returns:
+    - OCRResponse with status, card information and extracted data
     """
     try:
-
         image = None
         
         if file:
-            # process file upload
+            # Process file upload
             if not file.content_type.startswith("image/"):
                 raise HTTPException(status_code=400, detail="File must be an image")
             
@@ -39,27 +48,39 @@ async def ocr_id_card(
             file_name = file.filename
             
         elif image_base64:
-            # process base64
-            if "," in image_base64:
-                base64_data = image_base64.split(",")[1]
-            else:
-                base64_data = image_base64
-            
-            image_data = base64.b64decode(base64_data)
-            image = Image.open(io.BytesIO(image_data))
+            # Process base64
+            try:
+                if "," in image_base64:
+                    base64_data = image_base64.split(",")[1]
+                else:
+                    base64_data = image_base64
+                
+                image_data = base64.b64decode(base64_data)
+                image = Image.open(io.BytesIO(image_data))
+            except Exception as e:
+                raise HTTPException(status_code=400, detail=f"Invalid base64 image: {str(e)}")
             
         else:
-            raise HTTPException(status_code=400, detail="Vui lòng cung cấp file hoặc base64 string")
+            raise HTTPException(status_code=400, detail="Please provide either a file or base64 string")
         
-        # predict using the OCR service
+        # Set defaults if not provided
+        card_type = card_type or "cccd"
+        card_side = card_side or "front"
+        
+        # Predict using the OCR service
         start = time.time()
         result = resources['ocr_service'].process_id_card(
-            image = image,
-            required_type = card_type,
-            required_side = card_side,
+            image=image,
+            required_type=card_type,
+            required_side=card_side,
         )
-        logger.info(f'Time per request: {time.time()-start}')
+        processing_time = time.time() - start
+        logger.info(f'Time per request: {processing_time:.3f}s')
+        
         return result
         
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=400, detail=f"Lỗi xử lý ảnh: {str(e)}")
+        logger.error(f"Error processing image: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Error processing image: {str(e)}")
