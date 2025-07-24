@@ -24,10 +24,10 @@ app = FastAPI(
 # Middleware CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Cho phép tất cả nguồn (có thể giới hạn cụ thể)
+    allow_origins=["*"],  
     allow_credentials=True,
-    allow_methods=["*"],  # Cho phép tất cả phương thức (GET, POST, v.v.)
-    allow_headers=["*"],  # Cho phép tất cả header
+    allow_methods=["*"],  
+    allow_headers=["*"],  
 )
 
 

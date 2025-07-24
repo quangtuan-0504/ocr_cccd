@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
+import logging
 import torch
 import sys
 import os
@@ -27,6 +28,7 @@ def get_services():
         yolo_cardobb_model = load_yolo_cardobb_model(settings.yolo_cardobb_configs.get('initial', {}))
         logger.info(f'load paddle image orientation model')
         paddle_imgorient_model = load_paddle_imgorient_model(settings.paddle_imgorient_configs.get('initial', {}))
+        logger.setLevel(logging.INFO)
         logger.info(f'load paddle unwarping image model')
         paddle_imgunwarp_model = load_paddle_imgunwarp_model(settings.paddle_imgunwarp_configs.get('initial', {}))        
         logger.info(f'load yolo text region detection model')

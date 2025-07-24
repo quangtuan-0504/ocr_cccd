@@ -9,6 +9,7 @@ from exceptions import (
     ModelNotLoadedError
     )
 from configs import settings
+from logger import logger
 
 def validate_image_quality(image: Image.Image) -> None:
     """
@@ -158,7 +159,7 @@ def crop_and_rotate_image(image: np.ndarray, box: np.ndarray, expand_factor: flo
     except Exception as e:
         raise(f"Error in cropping/rotating image: {str(e)}")
 
-def map_text2card(fieldname_text:  dict[str,dict[str,str|int|float]], require_type: str, require_side: str)-> dict[str,str]:
+def map_text2card(fieldname_text:  dict[str,dict[str,str|int|float]], require_type: str, require_side: str)-> dict[str,dict]:
     # Định nghĩa các dictionary cho cc và cccd
     cc_front_fields = {
         'id' : "Số định danh cá nhân / Personal identification number",
@@ -211,15 +212,15 @@ def map_text2card(fieldname_text:  dict[str,dict[str,str|int|float]], require_ty
         raise ValueError("Invalid require_type or require_side. Use 'cc' or 'cccd' for type and 'front' for side.")
     
 
-    print("fieldname_text:", fieldname_text)
+    logger.info(f'fieldname_text: {fieldname_text}')
     output_dict = {}
     for field in field_mapping.values():
-        output_dict[field] = ""
+        output_dict[field] = {}
     # Duyệt qua fieldname_text để gán giá trị vào dictionary đầu ra
     for field, value in fieldname_text.items():
         if field in field_mapping:
             # Chọn tên trường tương ứng dựa trên require_type
             target_field = field_mapping[field]
-            output_dict[target_field] = value['text']
+            output_dict[target_field] = {'text': value['text'], 'score': value['score']}
     
     return output_dict

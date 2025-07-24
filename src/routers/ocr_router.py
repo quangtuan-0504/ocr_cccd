@@ -6,6 +6,8 @@ from PIL import Image
 import os
 from typing import Optional
 from load_resources import resources
+import time
+from logger import logger
 
 
 router = APIRouter(
@@ -50,11 +52,13 @@ async def ocr_id_card(
             raise HTTPException(status_code=400, detail="Vui lòng cung cấp file hoặc base64 string")
         
         # predict using the OCR service
+        start = time.time()
         result = resources['ocr_service'].process_id_card(
             image = image,
             required_type = card_type,
             required_side = card_side,
-        )       
+        )
+        logger.info(f'Time per request: {time.time()-start}')
         return result
         
     except Exception as e:
