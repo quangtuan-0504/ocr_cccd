@@ -30,7 +30,7 @@ def load_yolo_cardobb_model(configs: Optional[Dict[str, Any]] = None) -> YOLO:
     """
     try:
         configs = configs or {}
-        logger.info(f"Loading YOLOv11 OBB model with config: {configs}")
+        # logger.info(f"Loading YOLOv11 OBB model with config: {configs}")
         model = YOLO(**configs)
         logger.info("YOLOv11 OBB model loaded successfully")
         return model
@@ -54,7 +54,7 @@ def load_paddle_imgorient_model(configs: Optional[Dict[str, Any]] = None) -> Doc
     """
     try:
         configs = configs or {}
-        logger.info(f"Loading PaddleOCR orientation model with config: {configs}")
+        # logger.info(f"Loading PaddleOCR orientation model with config: {configs}")
         model = DocImgOrientationClassification(**configs)
         logger.info("PaddleOCR orientation model loaded successfully")
         return model
@@ -78,7 +78,7 @@ def load_paddle_imgunwarp_model(configs: Optional[Dict[str, Any]] = None) -> Tex
     """
     try:
         configs = configs or {}
-        logger.info(f"Loading PaddleOCR unwarping model with config: {configs}")
+        # logger.info(f"Loading PaddleOCR unwarping model with config: {configs}")
         model = TextImageUnwarping(**configs)
         logger.info("PaddleOCR unwarping model loaded successfully")
         return model
@@ -102,7 +102,7 @@ def load_yolo_textdetcls_model(configs: Optional[Dict[str, Any]] = None) -> YOLO
     """
     try:
         configs = configs or {}
-        logger.info(f"Loading YOLOv11 text detection model with config: {configs}")
+        # logger.info(f"Loading YOLOv11 text detection model with config: {configs}")
         model = YOLO(**configs)
         logger.info("YOLOv11 text detection model loaded successfully")
         return model
@@ -116,41 +116,21 @@ def load_vietocr_rec_model() -> Predictor:
     Load VietOCR model for text recognition.
 
     Returns:
-        Loaded VietOCR model instance.
+        Predictor: Loaded VietOCR model instance.
 
     Raises:
-        ModelNotLoadedError: If the VietOCR model fails to load.
-        FileNotFoundError: If the model files are not found.
+        RuntimeError: If the VietOCR model fails to load.
     """
     try:
-        logger.info("Loading VietOCR text recognition model")
+        with open(settings.vietocr_configs['base_cf'], encoding="utf-8") as f:
+            base_cf = yaml.safe_load(f)
+        with open(settings.vietocr_configs['cf'], encoding="utf-8") as f:
+            cus_cf = yaml.safe_load(f)
         
-        # Create config from the simplified settings
-        config = Cfg.load_config_from_name('vgg_transformer')
-        
-        # Check if the weights file exists
-        weights_path = settings.vietocr_configs.get('weights')
-        if not os.path.exists(weights_path):
-            raise FileNotFoundError(f"VietOCR weights file not found at: {weights_path}")
-            
-        # Set device and weights path
-        config['device'] = settings.vietocr_configs.get('device', 'cpu')
-        config['weights'] = weights_path
-        
-        # Custom config file if provided
-        config_path = settings.vietocr_configs.get('config')
-        if config_path and os.path.exists(config_path):
-            with open(config_path, encoding="utf-8") as f:
-                custom_config = yaml.safe_load(f)
-                config.update(custom_config)
-        
+        base_cf.update(cus_cf)
+        config = Cfg(base_cf)
+        config['weights'] = settings.vietocr_configs['model_path']
         vietocr_model = Predictor(config)
-        logger.info("VietOCR text recognition model loaded successfully")
         return vietocr_model
-        
-    except FileNotFoundError as e:
-        logger.error(f"VietOCR model file not found: {str(e)}")
-        raise ModelNotLoadedError(f"VietOCR model file not found: {str(e)}")
     except Exception as e:
-        logger.error(f"Failed to load VietOCR text recognition model: {str(e)}")
-        raise ModelNotLoadedError(f"Failed to load VietOCR text recognition model: {str(e)}")
+        raise RuntimeError(f"Failed to load VietOCR text recognition model: {str(e)}")

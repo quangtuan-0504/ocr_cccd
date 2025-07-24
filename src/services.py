@@ -328,9 +328,9 @@ class IdCardOCRService:
 
             # Validate card type and side
             detected_class = detection_info["class"]
-            if required_type not in detected_class:
+            if required_type not in detected_class.split('_'):
                 return {"status": "error", "message": f"Wrong card type: required {required_type}, detected {detected_class}"}
-            if required_side not in detected_class:
+            if required_side not in detected_class.split('_'):
                 return {"status": "error", "message": f"Wrong card side: required {required_side}, detected {detected_class}"}
             if "other_card" in detected_class:
                 return {"status": "error", "message": "Detected card is not a valid ID card."}
@@ -364,14 +364,15 @@ class IdCardOCRService:
                 return {"status": "error", "message": field_text["error"]}
 
             # Map extracted text to card fields
-            start_time = time.time()
-            mapped_text = map_text2card(fieldname_text=field_text, require_type=required_type, require_side=required_side)
-            logger.info(f'Time for map field: {time.time() - start_time:.3f}s')
+            # start_time = time.time()
+            # mapped_text = map_text2card(fieldname_text=field_text, require_type=required_type, require_side=required_side)
+            # logger.info(f'Time for map field: {time.time() - start_time:.3f}s')
 
             return {
                 "status": "success",
                 "card_info": detection_info,
-                "data": mapped_text
+                'data': field_text
+                # "data": mapped_text
             }
 
         except BadCaptureError as e:

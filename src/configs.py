@@ -104,14 +104,18 @@ class Settings(BaseSettings):
         },
         # Citizen ID card (cccd) field classes
         'cccd': {
-            0: 'date_of_birth',
-            1: 'date_of_expiry',
-            2: 'gender',
-            3: 'hometown',
-            4: 'id',
-            5: 'name',
-            6: 'nation',
-            7: 'permanent_residence'
+            0: 'id',
+            1: 'name',
+            2: 'date_of_birth',
+            3: 'sex',
+            4: 'nation',
+            5: 'place_of_origin',
+            6: 'place_of_residence',
+            7: 'date_of_expiry',
+            8: 'personal_iden',
+            9: 'date_of_issue',
+            10: 'face',
+            11: 'qr'
         }
     }
 
@@ -179,9 +183,9 @@ class Settings(BaseSettings):
 
     # VietOCR configuration
     vietocr_configs: Dict[str, str] = {
-        "weights": "model/vietocr/transformerocr.pth",
-        "config": "model/vietocr/config.yml",
-        "device": "cuda:0" if torch.cuda.is_available() else "cpu"
+        'model_path': 'model/vietocr/vgg_seq2seq.pth',
+        'base_cf': 'model/vietocr/base.yml',
+        'cf': 'model/vietocr/vgg-seq2seq.yml'
     }
 
 

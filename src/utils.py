@@ -334,8 +334,6 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
                         result['sex'] = fieldname_text[field]['text']
                     elif field == 'nation':
                         result['nation'] = fieldname_text[field]['text']
-                    elif field == 'place_of_residence':
-                        result['place_of_residence'] = fieldname_text[field]['text']
             else:  # back side
                 for field in fieldname_text:
                     if field == 'place_of_birth':
@@ -344,6 +342,8 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
                         result['date_of_issue'] = fieldname_text[field]['text']
                     elif field == 'date_of_expiry':
                         result['date_of_expiry'] = fieldname_text[field]['text']
+                    elif field == 'place_of_residence':
+                        result['place_of_residence'] = fieldname_text[field]['text']
         
         elif require_type == 'cccd':
             if require_side == 'front':
@@ -354,18 +354,22 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
                         result['name'] = fieldname_text[field]['text']
                     elif field == 'date_of_birth':
                         result['date_of_birth'] = fieldname_text[field]['text']
-                    elif field == 'gender':
-                        result['gender'] = fieldname_text[field]['text']
+                    elif field == 'sex':
+                        result['sex'] = fieldname_text[field]['text']
                     elif field == 'nation':
                         result['nation'] = fieldname_text[field]['text']
-                    elif field == 'hometown':
-                        result['hometown'] = fieldname_text[field]['text']
-                    elif field == 'permanent_residence':
-                        result['permanent_residence'] = fieldname_text[field]['text']
+                    elif field == 'place_of_origin':
+                        result['place_of_origin'] = fieldname_text[field]['text']
+                    elif field == 'place_of_residence':
+                        result['place_of_residence'] = fieldname_text[field]['text']
+                    elif field == 'date_of_expiry':
+                        result['date_of_expiry'] = fieldname_text[field]['text']
             else:  # back side
                 for field in fieldname_text:
-                    if field == 'date_of_expiry':
-                        result['date_of_expiry'] = fieldname_text[field]['text']
+                    if field == 'personal_iden':
+                        result['personal_iden'] = fieldname_text[field]['text']
+                    elif field == 'date_of_issue':
+                        result['date_of_issue'] = fieldname_text[field]['text']
         
         logger.info(f"Successfully mapped {len(result)} fields")
         return result

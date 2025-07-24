@@ -38,7 +38,7 @@ def get_services() -> Dict[str, Any]:
         # Load image orientation model
         logger.info('Loading Paddle image orientation model')
         paddle_imgorient_model = load_paddle_imgorient_model(settings.paddle_imgorient_configs.get('initial', {}))
-        
+        logger.setLevel(logging.INFO)
         # Load image unwarping model
         logger.info('Loading Paddle unwarping image model')
         paddle_imgunwarp_model = load_paddle_imgunwarp_model(settings.paddle_imgunwarp_configs.get('initial', {}))
