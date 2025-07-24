@@ -196,94 +196,64 @@ def validate_bounding_box(bbox: np.ndarray, image_size: Tuple[int, int]) -> None
         logger.error(f"Error validating bounding box: {e}")
         raise BadBoxError(f"Failed to validate bounding box: {e}")
 
-def crop_and_rotate_image(image: np.ndarray, box: np.ndarray, expand_factor: float = 1.05) -> np.ndarray:
+def crop_and_rotate_image(image: np.ndarray, box: np.ndarray, expand_factor: float = 1.1):
     """
-    Crop and rotate the image based on the bounding box.
-    
+    Crop and rotate the image based on OBB box with customizable expansion.
+
     Args:
-        image: Input image as numpy array.
-        box: Bounding box array [x, y, width, height, rotation].
-        expand_factor: Factor to expand the bounding box (default: 1.05).
-        
+        image: Input image as numpy array
+        box: OBB box [x_center, y_center, width, height, angle]
+        expand_factor: Factor to expand the bounding box size (default 1.0 for original size)
+
     Returns:
-        Cropped and rotated image as numpy array.
-        
-    Raises:
-        CardDetectionError: If cropping or rotation fails.
-        ValueError: If input parameters are invalid.
+        Cropped and rotated image as numpy array, or None if failed
+
+    Nới rộng box theo tỷ lệ chiều rộng/dài
     """
-    if image is None or not isinstance(image, np.ndarray):
-        logger.error("Invalid image input")
-        raise ValueError("Input image must be a numpy array")
-        
-    if box is None or len(box) != 5:
-        logger.error(f"Invalid bounding box: {box}")
-        raise ValueError("Bounding box must be a numpy array with 5 elements [x, y, width, height, rotation]")
-    
     try:
-        # Extract box parameters
-        cx, cy, w, h, angle = box
-        
-        # Check for invalid dimensions
-        if w <= 0 or h <= 0:
-            raise CardDetectionError(f"Invalid box dimensions: width={w}, height={h}")
-            
-        # Check if center is within image bounds
-        img_height, img_width = image.shape[:2]
-        if not (0 <= cx < img_width and 0 <= cy < img_height):
-            logger.warning(f"Box center ({cx}, {cy}) outside image bounds ({img_width}, {img_height})")
-        
-        # Expand box dimensions
-        w *= expand_factor
-        h *= expand_factor
-        
-        # Calculate the rotation matrix
-        angle_rad = np.deg2rad(angle)
-        cos_theta = np.cos(angle_rad)
-        sin_theta = np.sin(angle_rad)
-        
-        # Calculate the four corners of the rotated rectangle
-        x1 = cx - w/2 * cos_theta + h/2 * sin_theta
-        y1 = cy - w/2 * sin_theta - h/2 * cos_theta
-        
-        x2 = cx + w/2 * cos_theta + h/2 * sin_theta
-        y2 = cy + w/2 * sin_theta - h/2 * cos_theta
-        
-        x3 = cx + w/2 * cos_theta - h/2 * sin_theta
-        y3 = cy + w/2 * sin_theta + h/2 * cos_theta
-        
-        x4 = cx - w/2 * cos_theta - h/2 * sin_theta
-        y4 = cy - w/2 * sin_theta + h/2 * cos_theta
-        
-        # Define source points (rotated rectangle corners)
-        src_pts = np.array([[x1, y1], [x2, y2], [x3, y3], [x4, y4]], dtype=np.float32)
-        
-        # Calculate width and height of the destination rectangle
-        dst_width = int(w)
-        dst_height = int(h)
-        
-        # Define destination points (straight rectangle corners)
-        dst_pts = np.array([[0, 0], [dst_width, 0], [dst_width, dst_height], [0, dst_height]], dtype=np.float32)
-        
-        # Get perspective transformation matrix
-        M = cv2.getPerspectiveTransform(src_pts, dst_pts)
-        
-        # Apply perspective transformation
-        cropped_img = cv2.warpPerspective(image, M, (dst_width, dst_height))
-        
-        # Check if the cropped image is valid
-        if cropped_img is None or cropped_img.size == 0:
-            raise CardDetectionError("Failed to crop image: empty result")
-            
-        logger.info(f"Successfully cropped image to size: {cropped_img.shape}")
-        return cropped_img
-        
-    except CardDetectionError:
-        # Re-raise our custom exceptions
-        raise
+        x_center, y_center, width, height, angle = box
+        angle = angle * 180 / np.pi  # Convert radians to degrees
+        # if width >= height:
+        #     long_side = width
+        #     short_side = height
+        # else:
+        #     long_side = height
+        #     short_side = width
+
+        # h_img, w_img, _ = image.shape
+        # Apply expansion factor to width and height
+        expanded_width = width * expand_factor
+        expanded_height = height * expand_factor
+        # if w_img/h_img>=0.5:
+        #     expanded_width = expanded_width + expanded_width*0.2
+
+        # Get rotation matrix
+        M = cv2.getRotationMatrix2D((x_center, y_center), angle, 1.0)
+
+        # Rotate the image
+        rotated = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
+
+        # Calculate new coordinates with expanded dimensions
+        x1 = int(x_center - expanded_width / 2)
+        y1 = int(y_center - expanded_height / 2)
+        x2 = int(x_center + expanded_width / 2)
+        y2 = int(y_center + expanded_height / 2)
+
+        # Ensure coordinates are within image bounds
+        x1 = max(0, x1)
+        y1 = max(0, y1)
+        x2 = min(image.shape[1], x2)
+        y2 = min(image.shape[0], y2)
+
+        cropped = rotated[y1:y2, x1:x2]
+
+        # Check if cropped image is valid
+        if cropped.size == 0:
+            return None
+
+        return cropped
     except Exception as e:
-        logger.error(f"Error in crop_and_rotate_image: {e}")
-        raise CardDetectionError(f"Failed to crop and rotate image: {e}")
+        raise(f"Error in cropping/rotating image: {str(e)}")
 
 def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, require_side: str) -> Dict[str, Any]:
     """
@@ -313,6 +283,46 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
         logger.error(f"Invalid card side: {require_side}")
         raise ValueError("require_side must be 'front' or 'back'")
     
+    cc_front_fields = {
+        'id' : "Số định danh cá nhân / Personal identification number",
+        'name': "Họ, chữ đệm và tên khai sinh / Full name",
+        'date_of_birth' :"Ngày, tháng, năm sinh / Date of birth",
+        'sex' :"Giới tính / Sex",
+        'nation' :"Quốc tịch / Nationality"
+    }
+    cc_back_fields = {
+        'place_of_residence' :"Nơi cư trú / Place of residence",
+        'place_of_birth' :"Nơi đăng ký khai sinh / Place of birth",
+        'date_of_issue' :"Ngày, tháng, năm cấp / Date of issue",
+        'date_of_expiry' :"Ngày, tháng, năm hết hạn / Date of expiry"
+    }
+    cccd_front_fields = {
+        'id': "Số / No.",
+        'name':"Họ và tên / Full name",
+        'date_of_birth':"Ngày sinh / Date of birth",
+        'sex':"Giới tính / Sex",
+        'nation':"Quốc tịch / Nationality",
+        'place_of_origin':"Quê quán / Place of origin",
+        'place_of_residence':"Nơi thường trú / Place of residence",
+        'date_of_expiry':"Có giá trị đến / Date of expiry"
+    }
+    cccd_back_fields = {
+        'personal_iden':"Đặc điểm nhận dạng / Personal identification",
+        'date_of_issue':"Ngày, tháng, năm / Date, month, year"
+    }
+    
+    # Chọn dictionary đầu ra dựa trên require_type và require_side
+    if require_type == 'cc' and require_side == 'front':
+        field_mapping = cc_front_fields.copy()
+    elif require_type == 'cccd' and require_side == 'front':
+        field_mapping = cccd_front_fields.copy()
+    elif require_type == 'cc' and require_side == 'back':
+        field_mapping = cc_back_fields.copy()
+    elif require_type == 'cccd' and require_side == 'back':
+        field_mapping = cccd_back_fields.copy()
+    else:
+        raise ValueError("Invalid require_type or require_side. Use 'cc' or 'cccd' for type and 'front' for side.")
+    
     try:
         # Define dictionaries for cc and cccd
         result = {}
@@ -320,56 +330,15 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
         logger.info(f"Mapping text for {require_type} {require_side} side")
         logger.debug(f"Input fields: {list(fieldname_text.keys())}")
         
-        # Process the fields based on card type and side
-        if require_type == 'cc':
-            if require_side == 'front':
-                for field in fieldname_text:
-                    if field == 'id':
-                        result['id'] = fieldname_text[field]['text']
-                    elif field == 'name':
-                        result['name'] = fieldname_text[field]['text']
-                    elif field == 'date_of_birth':
-                        result['date_of_birth'] = fieldname_text[field]['text']
-                    elif field == 'sex':
-                        result['sex'] = fieldname_text[field]['text']
-                    elif field == 'nation':
-                        result['nation'] = fieldname_text[field]['text']
-            else:  # back side
-                for field in fieldname_text:
-                    if field == 'place_of_birth':
-                        result['place_of_birth'] = fieldname_text[field]['text']
-                    elif field == 'date_of_issue':
-                        result['date_of_issue'] = fieldname_text[field]['text']
-                    elif field == 'date_of_expiry':
-                        result['date_of_expiry'] = fieldname_text[field]['text']
-                    elif field == 'place_of_residence':
-                        result['place_of_residence'] = fieldname_text[field]['text']
-        
-        elif require_type == 'cccd':
-            if require_side == 'front':
-                for field in fieldname_text:
-                    if field == 'id':
-                        result['id'] = fieldname_text[field]['text']
-                    elif field == 'name':
-                        result['name'] = fieldname_text[field]['text']
-                    elif field == 'date_of_birth':
-                        result['date_of_birth'] = fieldname_text[field]['text']
-                    elif field == 'sex':
-                        result['sex'] = fieldname_text[field]['text']
-                    elif field == 'nation':
-                        result['nation'] = fieldname_text[field]['text']
-                    elif field == 'place_of_origin':
-                        result['place_of_origin'] = fieldname_text[field]['text']
-                    elif field == 'place_of_residence':
-                        result['place_of_residence'] = fieldname_text[field]['text']
-                    elif field == 'date_of_expiry':
-                        result['date_of_expiry'] = fieldname_text[field]['text']
-            else:  # back side
-                for field in fieldname_text:
-                    if field == 'personal_iden':
-                        result['personal_iden'] = fieldname_text[field]['text']
-                    elif field == 'date_of_issue':
-                        result['date_of_issue'] = fieldname_text[field]['text']
+        result = {}
+        for field in field_mapping.values():
+            result[field] = {}
+        # Duyệt qua fieldname_text để gán giá trị vào dictionary đầu ra
+        for field, value in fieldname_text.items():
+            if field in field_mapping:
+                # Chọn tên trường tương ứng dựa trên require_type
+                target_field = field_mapping[field]
+                result[target_field] = {'text': value['text'], 'score': round(float(value['score']),2)}
         
         logger.info(f"Successfully mapped {len(result)} fields")
         return result

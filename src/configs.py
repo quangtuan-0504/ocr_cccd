@@ -147,7 +147,8 @@ class Settings(BaseSettings):
                 "name": 'cc_det',
                 "stream": False,
                 "verbose": False,
-                "save": True
+                "save": True # if you want to save results image, you must pass img input as pil image
+                # Image not contiguous. Apply np.ascontiguousarray(im) to Annotator input images."
             }
         },
         # Citizen ID card (cccd) text detection model

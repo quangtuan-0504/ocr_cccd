@@ -117,8 +117,7 @@ class IdCardOCRService:
             Rotated image as a numpy array.
         """
         # Calculate hash of input for caching
-        image_hash = hash(cropped_image.tobytes())
-        
+        # image_hash = hash(cropped_image.tobytes())
         output = self.imgorient_model.predict(
             input=cropped_image, 
             **settings.paddle_imgorient_configs['inference']
@@ -170,7 +169,7 @@ class IdCardOCRService:
         # Use optimized inference settings
         inference_config = settings.yolo_textdetcls_configs[required_type]['inference'].copy()
         inference_config["verbose"] = False
-        inference_config["save"] = False  # Don't save images to disk
+        # inference_config["save"] = False  # Don't save images to disk
         
         results = self.textdetcls_model[required_type].predict(
             source=img_pil, **inference_config
@@ -321,6 +320,7 @@ class IdCardOCRService:
             # Detect and crop card
             start_time = time.time()
             cropped_image, detection_info = self._predict_card(image)
+            cv2.imwrite('analysis_error/img_cropped.jpg', cropped_image)
             logger.info(f'Time for crop card: {time.time() - start_time:.3f}s')
             
             if "error" in detection_info:
@@ -340,15 +340,19 @@ class IdCardOCRService:
             start_time = time.time()
             
             # Process rotation and unwarping in parallel
-            rotate_future = self.executor.submit(self._cached_rotate_card, cropped_image)
+            # rotate_future = self.executor.submit(self._cached_rotate_card, cropped_image)
             
-            try:
-                rotated_img = rotate_future.result(timeout=5.0)  # 5 second timeout
-                unwarped_img = self._cached_unwarp_card(rotated_img)
-                logger.info(f'Time for rotate and unwarp: {time.time() - start_time:.3f}s')
-            except concurrent.futures.TimeoutError:
-                logger.warning("Rotation timed out, using original image")
-                unwarped_img = cropped_image
+            # try:
+            #     rotated_img = rotate_future.result(timeout=5.0)  # 5 second timeout
+            #     unwarped_img = self._cached_unwarp_card(rotated_img)
+            #     logger.info(f'Time for rotate and unwarp: {time.time() - start_time:.3f}s')
+            # except concurrent.futures.TimeoutError:
+            #     logger.warning("Rotation timed out, using original image")
+            #     unwarped_img = cropped_image
+
+            rotated_img = self._rotate_card(cropped_image)
+            unwarped_img = self._unwarp_card(rotated_img)
+            logger.info(f'Time for rotate and unwarp: {time.time() - start_time:.3f}s')
             
             # Detect text regions
             start_time = time.time()
@@ -364,15 +368,15 @@ class IdCardOCRService:
                 return {"status": "error", "message": field_text["error"]}
 
             # Map extracted text to card fields
-            # start_time = time.time()
-            # mapped_text = map_text2card(fieldname_text=field_text, require_type=required_type, require_side=required_side)
-            # logger.info(f'Time for map field: {time.time() - start_time:.3f}s')
+            start_time = time.time()
+            mapped_text = map_text2card(fieldname_text=field_text, require_type=required_type, require_side=required_side)
+            logger.info(f'Time for map field: {time.time() - start_time:.3f}s')
 
             return {
                 "status": "success",
                 "card_info": detection_info,
-                'data': field_text
-                # "data": mapped_text
+                # 'data': field_text
+                "data": mapped_text
             }
 
         except BadCaptureError as e:
