@@ -29,12 +29,13 @@ class Settings(BaseSettings):
     }
 
     # YOLOv11 OBB model for card detection
-    YOLO_MODEL_PATH: str = "model/det_card/best.pt"
+    YOLO_MODEL_PATH: str = "model/det_card/best.onnx"
     YOLO_CONF_THRESHOLD: float = 0.5
     
     yolo_cardobb_configs: Dict[str, Dict[str, Any]] = {
         "initial": {
-            "model": YOLO_MODEL_PATH
+            "model": YOLO_MODEL_PATH,
+            "task": "obb"
         },
         "inference": {
             "conf": YOLO_CONF_THRESHOLD,
@@ -124,7 +125,8 @@ class Settings(BaseSettings):
         # Citizen card (cc) text detection model
         "cc": {
             "initial": {
-                "model": "model/textdet/cc/best.pt"
+                "model": "model/textdet/cc/best.onnx",
+                "task": "detect"
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD,
@@ -154,7 +156,8 @@ class Settings(BaseSettings):
         # Citizen ID card (cccd) text detection model
         "cccd": {
             "initial": {
-                "model": "model/textdet/cccd/best.pt"
+                "model": "model/textdet/cccd/best.onnx",
+                "task": "detect"
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD,
