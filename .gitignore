@@ -1,5 +1,5 @@
 *.env
-*model/
+./model/
 *__pycache__/
 *yolo11n-obb.pt
 *tmp.py

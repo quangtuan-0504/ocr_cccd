@@ -187,9 +187,9 @@ class Settings(BaseSettings):
 
     # VietOCR configuration
     vietocr_configs: Dict[str, str] = {
-        'model_path': 'model/vietocr/vgg_seq2seq.pth',
-        'base_cf': 'model/vietocr/base.yml',
-        'cf': 'model/vietocr/vgg-seq2seq.yml'
+        'cnn_onnx_path': '',
+        'encoder_onnx_path': '',
+        'decoder_onnx_path': '',
     }
 
 
