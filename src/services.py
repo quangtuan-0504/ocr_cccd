@@ -10,7 +10,7 @@ from functools import lru_cache
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
-from .vietocrOnnxModule.tool.translate import translate_onnx, process_input
+from vietocrOnnxModule.tool.translate import translate_onnx, process_input
 from configs import settings
 from utils import (
     validate_image_quality,

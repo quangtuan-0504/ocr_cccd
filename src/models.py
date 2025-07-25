@@ -11,8 +11,8 @@ import os
 from typing import Dict, Any, Optional, Tuple
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
-from .vietocrOnnxModule.tool.config import Cfg
-from .vietocrOnnxModule.model.vocab import Vocab
+from vietocrOnnxModule.tool.config import Cfg
+from vietocrOnnxModule.model.vocab import Vocab
 from exceptions import ModelNotLoadedError
 from logger import logger
 

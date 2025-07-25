@@ -1,6 +1,9 @@
 import torch
 import numpy as np
 import cv2
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from model.vocab import Vocab
 from model.transformerocr import VietOCR
 import math
@@ -111,7 +114,7 @@ def process_image(image, image_height, image_min_width, image_max_width):
 
     h, w = image.shape[:2]
     new_w, image_height = resize(w, h, image_height, image_min_width, image_max_width)
-    img = cv2.resize(img, (new_w, image_height), interpolation=cv2.INTER_LANCZOS4)
+    img = cv2.resize(image, (new_w, image_height), interpolation=cv2.INTER_LANCZOS4)
     img = np.asarray(img).transpose(2,0,1)
     img = img/255
     return img
