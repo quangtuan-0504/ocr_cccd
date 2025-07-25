@@ -4,11 +4,13 @@ from PIL import Image
 import cv2
 from paddleocr import DocImgOrientationClassification, TextImageUnwarping
 from ultralytics import YOLO
-from vietocr.tool.predictor import Predictor
 import time
 import concurrent.futures
 from functools import lru_cache
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+from .vietocrOnnxModule.tool.translate import translate_onnx, process_input
 from configs import settings
 from utils import (
     validate_image_quality,
@@ -33,7 +35,7 @@ class IdCardOCRService:
         imgorient_model: DocImgOrientationClassification,
         imgunwarp_model: TextImageUnwarping,
         textdetcls_model: Dict[str, YOLO],
-        rec_model: Predictor
+        vietocr_onnx: Tuple
     ):
         """Initialize the ID card OCR service.
 
@@ -48,7 +50,9 @@ class IdCardOCRService:
         self.imgorient_model = imgorient_model
         self.imgunwarp_model = imgunwarp_model
         self.textdetcls_model = textdetcls_model
-        self.rec_model = rec_model
+        self.rec_model = vietocr_onnx[0]
+        self.vocab = vietocr_onnx[1]
+        self.vietocr_cf = vietocr_onnx[2]
         
         # Initialize thread pool for parallel processing
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
@@ -202,7 +206,7 @@ class IdCardOCRService:
                 cropped_img = rotated_unwarped_img[y_min:y_max, x_min:x_max]
                 fieldname_textregion_score.append({
                     'field': classes[j],
-                    'text_region': cropped_img,
+                    'text_region': cropped_img, # np.array
                     'score': scores[j],
                     'y_min': y_min
                 })
@@ -226,8 +230,15 @@ class IdCardOCRService:
         
         try:
             # Convert image for OCR
-            cropped_img_pil = Image.fromarray(cv2.cvtColor(region_data['text_region'], cv2.COLOR_BGR2RGB))
-            vietocr_text = self.rec_model.predict(cropped_img_pil)
+            # cropped_img_pil = Image.fromarray(cv2.cvtColor(region_data['text_region'], cv2.COLOR_BGR2RGB))
+            # vietocr_text = self.rec_model.predict(cropped_img_pil)
+
+            cropped_img = cv2.cvtColor(region_data['text_region'], cv2.COLOR_BGR2RGB)
+            img = process_input(cropped_img, self.vietocr_cf['dataset']['image_height'], 
+                            self.vietocr_cf['dataset']['image_min_width'], self.vietocr_cf['dataset']['image_max_width'])  
+            # img = img.to(self.vietocr_cf['device'])
+            vietocr_text = translate_onnx(np.array(img), self.rec_model)[0].tolist()
+            vietocr_text = self.vocab.decode(vietocr_text)
             
             logger.info(f"Extracted text for field {str_cls}: {vietocr_text}")
             return {

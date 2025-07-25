@@ -14,7 +14,7 @@ from models import (
     load_paddle_imgorient_model,
     load_paddle_imgunwarp_model,
     load_yolo_textdetcls_model,
-    load_vietocr_rec_model
+    load_vietocr_rec_onnx_model
 )
 from services import IdCardOCRService
 
@@ -52,7 +52,7 @@ def get_services() -> Dict[str, Any]:
         
         # Load text recognition model
         logger.info('Loading VietOCR recognition model')
-        vietocr_rec_model = load_vietocr_rec_model()
+        vietocr_rec = load_vietocr_rec_onnx_model()
 
         # Initialize OCR service with all models
         resources['ocr_service'] = IdCardOCRService(
@@ -60,7 +60,7 @@ def get_services() -> Dict[str, Any]:
             imgorient_model=paddle_imgorient_model,
             imgunwarp_model=paddle_imgunwarp_model,
             textdetcls_model=yolo_textdetcls_model,
-            rec_model=vietocr_rec_model
+            vietocr_onnx=vietocr_rec
         )
         logger.info("All services loaded successfully.")
     except Exception as e:

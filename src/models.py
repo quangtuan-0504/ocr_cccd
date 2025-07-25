@@ -4,13 +4,15 @@ Model loading functions for the OCR identification card application.
 
 from paddleocr import DocImgOrientationClassification, TextImageUnwarping
 from ultralytics import YOLO
-from vietocr.tool.predictor import Predictor
-from vietocr.tool.config import Cfg
 from configs import settings
+import onnxruntime
 import yaml
 import os
-from typing import Dict, Any, Optional
-
+from typing import Dict, Any, Optional, Tuple
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+from .vietocrOnnxModule.tool.config import Cfg
+from .vietocrOnnxModule.model.vocab import Vocab
 from exceptions import ModelNotLoadedError
 from logger import logger
 
@@ -110,27 +112,30 @@ def load_yolo_textdetcls_model(configs: Optional[Dict[str, Any]] = None) -> YOLO
         logger.error(f"Failed to load YOLOv11 text detection model: {str(e)}")
         raise ModelNotLoadedError(f"Failed to load YOLOv11 text detection model: {str(e)}")
 
-
-def load_vietocr_rec_model() -> Predictor:
+    
+def load_vietocr_rec_onnx_model() -> Tuple:
     """
     Load VietOCR model for text recognition.
 
     Returns:
-        Predictor: Loaded VietOCR model instance.
+        Predictor: Loaded onnx VietOCR model.
 
     Raises:
         RuntimeError: If the VietOCR model fails to load.
     """
     try:
-        with open(settings.vietocr_configs['base_cf'], encoding="utf-8") as f:
-            base_cf = yaml.safe_load(f)
-        with open(settings.vietocr_configs['cf'], encoding="utf-8") as f:
-            cus_cf = yaml.safe_load(f)
+        # create inference session
+        cnn_session = onnxruntime.InferenceSession(settings.vietocr_configs['cnn_onnx_path'])
+        encoder_session = onnxruntime.InferenceSession(settings.vietocr_configs['encoder_onnx_path'])
+        decoder_session = onnxruntime.InferenceSession(settings.vietocr_configs['decoder_onnx_path'])
         
-        base_cf.update(cus_cf)
-        config = Cfg(base_cf)
-        config['weights'] = settings.vietocr_configs['model_path']
-        vietocr_model = Predictor(config)
-        return vietocr_model
+        session = (cnn_session, encoder_session, decoder_session)
+        config = Cfg.load_config_from_file(
+            fname = './src/vietocrOnnxModule/config/vgg-seq2seq.yml',
+            base_file = './src/vietocrOnnxModule/config/base.yml'
+        )
+        config['device'] = 'gpu'
+        vocab = Vocab(config['vocab'])
+        return session, vocab, config
     except Exception as e:
         raise RuntimeError(f"Failed to load VietOCR text recognition model: {str(e)}")
