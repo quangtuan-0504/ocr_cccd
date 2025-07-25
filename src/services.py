@@ -230,14 +230,13 @@ class IdCardOCRService:
         
         try:
             # Convert image for OCR
-            # cropped_img_pil = Image.fromarray(cv2.cvtColor(region_data['text_region'], cv2.COLOR_BGR2RGB))
-            # vietocr_text = self.rec_model.predict(cropped_img_pil)
-
             cropped_img = cv2.cvtColor(region_data['text_region'], cv2.COLOR_BGR2RGB)
+            # Process input image - returns numpy array ready for ONNX inference
             img = process_input(cropped_img, self.vietocr_cf['dataset']['image_height'], 
                             self.vietocr_cf['dataset']['image_min_width'], self.vietocr_cf['dataset']['image_max_width'])  
-            # img = img.to(self.vietocr_cf['device'])
-            vietocr_text = translate_onnx(np.array(img), self.rec_model)[0].tolist()
+            
+            # Process with ONNX model - no need for additional np.array conversion
+            vietocr_text = translate_onnx(img, self.rec_model)[0].tolist()
             vietocr_text = self.vocab.decode(vietocr_text)
             
             logger.info(f"Extracted text for field {str_cls}: {vietocr_text}")

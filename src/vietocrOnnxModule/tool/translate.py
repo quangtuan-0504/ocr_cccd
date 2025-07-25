@@ -58,11 +58,16 @@ def translate_onnx(img, session, max_seq_length=128, sos_token=1, eos_token=2):
         np.any(np.asarray(translated_sentence).T == eos_token, axis=1)
     ):
         tgt_inp = translated_sentence
-        decoder_input = {decoder_session.get_inputs()[0].name: tgt_inp[-1], decoder_session.get_inputs()[1].name: hidden, decoder_session.get_inputs()[2].name: encoder_outputs}
+        decoder_input = {
+            decoder_session.get_inputs()[0].name: tgt_inp[-1], 
+            decoder_session.get_inputs()[1].name: hidden, 
+            decoder_session.get_inputs()[2].name: encoder_outputs
+        }
 
         output, hidden, _ = decoder_session.run(None, decoder_input)
         output = np.expand_dims(output, axis=1)
-        output = torch.Tensor(output)
+        # Convert to torch tensor for efficient processing
+        output = torch.from_numpy(output)
 
         values, indices = torch.topk(output, 1)
         indices = indices[:, -1, 0]
@@ -71,6 +76,7 @@ def translate_onnx(img, session, max_seq_length=128, sos_token=1, eos_token=2):
         translated_sentence.append(indices)
         max_length += 1
 
+        # Explicitly free memory
         del output
 
     translated_sentence = np.asarray(translated_sentence).T
@@ -122,9 +128,27 @@ def process_image(image, image_height, image_min_width, image_max_width):
 
 
 def process_input(image, image_height, image_min_width, image_max_width):
-    img = process_image(image, image_height, image_min_width, image_max_width)
+    """
+    Process input image for OCR recognition.
+    
+    Args:
+        image: Input image as numpy array
+        image_height: Target height for resizing
+        image_min_width: Minimum width constraint
+        image_max_width: Maximum width constraint
+        
+    Returns:
+        Processed image as numpy array
+    """
+    h, w = image.shape[:2]
+    new_w, image_height = resize(w, h, image_height, image_min_width, image_max_width)
+    img = cv2.resize(image, (new_w, image_height), interpolation=cv2.INTER_LANCZOS4)
+    img = np.asarray(img).transpose(2,0,1)
+    img = img/255.0  # Normalize to [0,1] range
+    # Add batch dimension
     img = img[np.newaxis, ...]
-    img = torch.FloatTensor(img)
+    # Convert to float32 for better performance with ONNX
+    img = img.astype(np.float32)
     return img
 
 
