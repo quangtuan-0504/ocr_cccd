@@ -34,10 +34,10 @@ def test_vietocr_onnx_gpu():
     
     if torch.cuda.is_available():
         # Set GPU memory limit
-        sess_options.gpu_mem_limit = 2 * 1024 * 1024 * 1024  # 2GB
+        # sess_options.gpu_mem_limit = 2 * 1024 * 1024 * 1024  # 2GB
         
         # Set arena extend strategy
-        sess_options.set_arena_extend_strategy(onnxruntime.ArenaExtendStrategy.NEXT_POWER_OF_TWO)
+        # sess_options.set_arena_extend_strategy(onnxruntime.ArenaExtendStrategy.NEXT_POWER_OF_TWO)
         
         # Enable CUDA optimization
         sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
@@ -47,17 +47,17 @@ def test_vietocr_onnx_gpu():
     try:
         print("Loading ONNX models...")
         cnn_session = onnxruntime.InferenceSession(
-            'model/vietocr/my_cnn.onnx',
+            'model/vietocr/cnn.onnx',
             sess_options=sess_options,
             providers=providers
         )
         encoder_session = onnxruntime.InferenceSession(
-            'model/vietocr/my_encoder.onnx',
+            'model/vietocr/encoder.onnx',
             sess_options=sess_options,
             providers=providers
         )
         decoder_session = onnxruntime.InferenceSession(
-            'model/vietocr/my_decoder.onnx',
+            'model/vietocr/decoder.onnx',
             sess_options=sess_options,
             providers=providers
         )
