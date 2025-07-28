@@ -179,8 +179,9 @@ def validate_bounding_box(bbox: np.ndarray, image_size: Tuple[int, int]) -> None
         if area_ratio < settings.MIN_AREA_RATIO:
             raise BadBoxError(f"Card area is too small (taken from too far): {area_ratio:.3f} < {settings.MIN_AREA_RATIO}")
         
-        if area_ratio > settings.MAX_AREA_RATIO:
-            raise BadBoxError(f"Card area is too large (taken from too close): {area_ratio:.3f} > {settings.MAX_AREA_RATIO}")
+        # if area_ratio > settings.MAX_AREA_RATIO:
+        #      raise BadBoxError(f"Card area is too large (taken from too close): {area_ratio:.3f} > {settings.MAX_AREA_RATIO}")
+        
         
         # Calculate aspect ratio
         aspect_ratio = max(box_width, box_height) / min(box_width, box_height)
