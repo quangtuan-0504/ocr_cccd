@@ -125,36 +125,26 @@ def load_vietocr_rec_onnx_model() -> Tuple:
         RuntimeError: If the VietOCR model fails to load.
     """
     try:
+        # Check cuda availability
+        cuda_check = torch.cuda.is_available()
+        # Enable cuda if available
+        enable_cuda = settings.vietocr_configs.get('onnx_execution_options', {}).get('enable_cuda', False) and cuda_check
         # Define providers based on GPU availability
-        providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if torch.cuda.is_available() else ['CPUExecutionProvider']
+        providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if enable_cuda else ['CPUExecutionProvider']
         logger.info(f"Using ONNX Runtime providers: {providers}")
         
-        # Get ONNX execution options from settings
-        sess_options = onnxruntime.SessionOptions()
-        
-        if torch.cuda.is_available():
-            # Configure ONNX Runtime for GPU execution
-            onnx_options = settings.vietocr_configs.get('onnx_execution_options', {})
-            
-            # Set GPU memory limit if specified
-            if 'gpu_mem_limit' in onnx_options:
-                sess_options.gpu_mem_limit = onnx_options['gpu_mem_limit']
-            
-            # Set arena extend strategy
-            if 'arena_extend_strategy' in onnx_options:
-                if onnx_options['arena_extend_strategy'] == 'kNextPowerOfTwo':
-                    sess_options.set_arena_extend_strategy(onnxruntime.ArenaExtendStrategy.NEXT_POWER_OF_TWO)
+        # Enable CUDA optimization
+        if enable_cuda:
+            # Get ONNX execution options from settings
+            sess_options = onnxruntime.SessionOptions()
             
             # Enable CUDA optimization
-            if onnx_options.get('enable_cuda', False):
-                # Enable CUDA optimization
-                sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-                
-                # Set execution mode
-                sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
-                
-                # Enable profiling if needed for debugging
-                # sess_options.enable_profiling = True
+            sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+            
+            # Set execution mode
+            sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
+        else:
+            sess_options = None
         
         # Create inference sessions with GPU support
         cnn_session = onnxruntime.InferenceSession(
@@ -179,7 +169,7 @@ def load_vietocr_rec_onnx_model() -> Tuple:
             base_file = './src/vietocrOnnxModule/config/base.yml'
         )
         # Set device in config
-        config['device'] = 'cuda' if torch.cuda.is_available() else 'cpu'
+        config['device'] = 'cuda' if enable_cuda else 'cpu'
         vocab = Vocab(config['vocab'])
         return session, vocab, config
     except Exception as e:

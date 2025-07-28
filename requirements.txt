@@ -91,8 +91,8 @@ ImportError: /opt/conda/envs/ocr/lib/python3.11/site-packages/torch/lib/libtorch
 # pip install paddleocr==3.1.0
 # python -m pip install paddlepaddle-gpu==3.1.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/
 
+# pip install fastapi[standard]
 # pip install ultralytics==8.3.169 --no-deps
 
-# pip install fastapi[standard]
 # pip install onnx==1.18.0
 # pip install onnxruntime-gpu==1.22.0
