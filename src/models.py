@@ -131,8 +131,8 @@ def load_vietocr_rec_onnx_model() -> Tuple:
         enable_cuda = settings.vietocr_configs.get('onnx_execution_options', {}).get('enable_cuda', False) and cuda_check
         # Define providers based on GPU availability
         providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if enable_cuda else ['CPUExecutionProvider']
-        logger.info(f"Using ONNX Runtime providers: {providers}")
-        
+        logger.info(f"Using ONNX Runtime providers for VietOCR: {providers}")
+
         # Enable CUDA optimization
         if enable_cuda:
             # Get ONNX execution options from settings

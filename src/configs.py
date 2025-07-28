@@ -191,7 +191,8 @@ class Settings(BaseSettings):
         'encoder_onnx_path': 'model/vietocr/my_encoder.onnx',
         'decoder_onnx_path': 'model/vietocr/my_decoder.onnx',
         'onnx_execution_options': {
-            'enable_cuda': torch.cuda.is_available()
+            # 'enable_cuda': torch.cuda.is_available()
+            'enable_cuda': False
         }
     }
 
