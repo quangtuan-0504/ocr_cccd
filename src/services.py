@@ -61,8 +61,8 @@ class IdCardOCRService:
         self.cache_size = 128  # Adjust based on memory constraints
         
         # Apply caching to expensive operations
-        self._cached_rotate_card = lru_cache(maxsize=self.cache_size)(self._rotate_card)
-        self._cached_unwarp_card = lru_cache(maxsize=self.cache_size)(self._unwarp_card)
+        # self._cached_rotate_card = lru_cache(maxsize=self.cache_size)(self._rotate_card)
+        # self._cached_unwarp_card = lru_cache(maxsize=self.cache_size)(self._unwarp_card)
 
     def _predict_card(self, image: Image.Image) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
         """Detect and crop the card in the image using YOLOv11 OBB.
