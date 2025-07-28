@@ -9,6 +9,7 @@ import concurrent.futures
 from functools import lru_cache
 import sys
 import os
+import gc  # Add garbage collection import
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 from vietocrOnnxModule.tool.translate import translate_onnx, process_input
 from configs import settings
@@ -81,14 +82,21 @@ class IdCardOCRService:
             # Use batched inference with optimized settings
             inference_config = settings.yolo_cardobb_configs["inference"].copy()
             inference_config["verbose"] = False  # Reduce logging overhead
+            
             # Run YOLOv11 inference with no_grad to save memory
             with torch.no_grad():
                 results = self.cardobb_model.predict(image, **inference_config)
 
             if not results or not results[0].obb:
+                # Clean up before returning
+                del image_np, results
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
+                gc.collect()
                 return None, {"error": "No card detected in image"}
 
             obb = results[0].obb
+            # Move tensors to CPU immediately and convert to numpy
             boxes = obb.xywhr.cpu().numpy()
             scores = obb.conf.cpu().numpy()
             classes = obb.cls.cpu().numpy().astype(int)
@@ -103,10 +111,12 @@ class IdCardOCRService:
             validate_bounding_box(bbox=best_box, image_size=(img_width, img_height))
             cropped_image = crop_and_rotate_image(image_np, best_box)
 
-            # Clean up tensors and variables
+            # Clean up tensors and variables immediately
+            del obb, boxes, scores, classes
             del image_np, results
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
+            gc.collect()  # Force garbage collection
 
             logger.info(f"Detected card class: {self.CLASS_CARD_NAMES[best_class]} with confidence {best_score:.3f}")
             return cropped_image, {
@@ -116,6 +126,10 @@ class IdCardOCRService:
 
         except Exception as e:
             logger.error(f"Error predicting card: {str(e)}")
+            # Ensure cleanup even on error
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
             return None, {"error": f"Card prediction failed: {str(e)}"}
 
     def _rotate_card(self, cropped_image: np.ndarray) -> np.ndarray:
@@ -175,53 +189,70 @@ class IdCardOCRService:
         Returns:
             List of dictionaries containing field, text region, score, and y_min.
         """
-        img_pil = Image.fromarray(rotated_unwarped_img)
-        
+        if inference_config["save"]:
+            img = Image.fromarray(rotated_unwarped_img)
+        else:
+            img = rotated_unwarped_img
         # Use optimized inference settings
         inference_config = settings.yolo_textdetcls_configs[required_type]['inference'].copy()
         inference_config["verbose"] = False
-        # inference_config["save"] = False  # Don't save images to disk
-        # Run YOLOv11 inference with no_grad to save memory
-        with torch.no_grad():
-            results = self.textdetcls_model[required_type].predict(
-                source=img_pil, **inference_config
-            )
-
+        
         fieldname_textregion_score = []
-        for result in results:
-            boxes = result.boxes
-            boxes_xyxy = boxes.xyxy.cpu().numpy()
-            scores = boxes.conf.cpu().numpy()
-            classes = boxes.cls.cpu().numpy().astype(int)
+        
+        try:
+            # Run YOLOv11 inference with no_grad to save memory
+            with torch.no_grad():
+                results = self.textdetcls_model[required_type].predict(
+                    source=img, **inference_config
+                )
 
-            detected_fields = [self.CLASS_FIELD_NAME[required_type][int(cls)] for cls in classes]
-            logger.info(f"Detected fields: {detected_fields}")
-
-            # Process all detected regions at once
-            for j, box in enumerate(boxes_xyxy):
-                x_min, y_min, x_max, y_max = map(int, box)
-                # Ensure coordinates are within bounds
-                x_min = max(0, x_min)
-                y_min = max(0, y_min)
-                x_max = min(rotated_unwarped_img.shape[1], x_max)
-                y_max = min(rotated_unwarped_img.shape[0], y_max)
-                
-                # Skip invalid regions
-                if x_min >= x_max or y_min >= y_max:
-                    logger.warning(f"Skipping invalid text region: {x_min},{y_min},{x_max},{y_max}")
+            for result in results:
+                boxes = result.boxes
+                if boxes is None or len(boxes) == 0:
                     continue
                     
-                cropped_img = rotated_unwarped_img[y_min:y_max, x_min:x_max]
-                fieldname_textregion_score.append({
-                    'field': classes[j],
-                    'text_region': cropped_img, # np.array
-                    'score': scores[j],
-                    'y_min': y_min
-                })
-        # Clean up tensors and variables
-        del rotated_unwarped_img, img_pil, results
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+                # Move tensors to CPU immediately and convert to numpy
+                boxes_xyxy = boxes.xyxy.cpu().numpy()
+                scores = boxes.conf.cpu().numpy()
+                classes = boxes.cls.cpu().numpy().astype(int)
+
+                detected_fields = [self.CLASS_FIELD_NAME[required_type][int(cls)] for cls in classes]
+                logger.info(f"Detected fields: {detected_fields}")
+
+                # Process all detected regions at once
+                for j, box in enumerate(boxes_xyxy):
+                    x_min, y_min, x_max, y_max = map(int, box)
+                    # Ensure coordinates are within bounds
+                    x_min = max(0, x_min)
+                    y_min = max(0, y_min)
+                    x_max = min(rotated_unwarped_img.shape[1], x_max)
+                    y_max = min(rotated_unwarped_img.shape[0], y_max)
+                    
+                    # Skip invalid regions
+                    if x_min >= x_max or y_min >= y_max:
+                        logger.warning(f"Skipping invalid text region: {x_min},{y_min},{x_max},{y_max}")
+                        continue
+                        
+                    cropped_img = rotated_unwarped_img[y_min:y_max, x_min:x_max]
+                    fieldname_textregion_score.append({
+                        'field': classes[j],
+                        'text_region': cropped_img, # np.array
+                        'score': scores[j],
+                        'y_min': y_min
+                    })
+                
+                # Clean up tensors for this result
+                del boxes, boxes_xyxy, scores, classes
+
+        except Exception as e:
+            logger.error(f"Error in text detection: {str(e)}")
+        finally:
+            # Clean up all remaining tensors and variables
+            del img_pil, results
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()  # Force garbage collection
+            
         return fieldname_textregion_score
 
     def _extract_text_region(self, region_data: Dict[str, Any], required_type: str) -> Dict[str, Any]:
