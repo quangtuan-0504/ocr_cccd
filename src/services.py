@@ -21,6 +21,7 @@ from utils import (
 )
 from logger import logger
 from exceptions import CardDetectionError, BadCaptureError
+import torch
 
 class IdCardOCRService:
     """Service for processing ID card images using YOLOv11 OBB, PaddleOCR and VietOCR."""
@@ -80,8 +81,9 @@ class IdCardOCRService:
             # Use batched inference with optimized settings
             inference_config = settings.yolo_cardobb_configs["inference"].copy()
             inference_config["verbose"] = False  # Reduce logging overhead
-            
-            results = self.cardobb_model.predict(image, **inference_config)
+            # Run YOLOv11 inference with no_grad to save memory
+            with torch.no_grad():
+                results = self.cardobb_model.predict(image, **inference_config)
 
             if not results or not results[0].obb:
                 return None, {"error": "No card detected in image"}
@@ -100,6 +102,11 @@ class IdCardOCRService:
             img_height, img_width = image_np.shape[:2]
             validate_bounding_box(bbox=best_box, image_size=(img_width, img_height))
             cropped_image = crop_and_rotate_image(image_np, best_box)
+
+            # Clean up tensors and variables
+            del image_np, results
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
             logger.info(f"Detected card class: {self.CLASS_CARD_NAMES[best_class]} with confidence {best_score:.3f}")
             return cropped_image, {
@@ -174,10 +181,11 @@ class IdCardOCRService:
         inference_config = settings.yolo_textdetcls_configs[required_type]['inference'].copy()
         inference_config["verbose"] = False
         # inference_config["save"] = False  # Don't save images to disk
-        
-        results = self.textdetcls_model[required_type].predict(
-            source=img_pil, **inference_config
-        )
+        # Run YOLOv11 inference with no_grad to save memory
+        with torch.no_grad():
+            results = self.textdetcls_model[required_type].predict(
+                source=img_pil, **inference_config
+            )
 
         fieldname_textregion_score = []
         for result in results:
@@ -210,7 +218,10 @@ class IdCardOCRService:
                     'score': scores[j],
                     'y_min': y_min
                 })
-
+        # Clean up tensors and variables
+        del rotated_unwarped_img, img_pil, results
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
         return fieldname_textregion_score
 
     def _extract_text_region(self, region_data: Dict[str, Any], required_type: str) -> Dict[str, Any]:
