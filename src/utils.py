@@ -299,22 +299,22 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
     }
     cccd_front_fields = {
         # toy dataset
-        'date_of_birth': "Ngày sinh / Date of birth",
-        'date_of_expiry': "Có giá trị đến / Date of expiry",
-        'gender': "Giới tính / Sex",
-        'hometown': "Quê quán / Place of origin",
-        'id': "Số / No.",
-        'name': "Họ và tên / Full name",
-        'nation': "Quốc tịch / Nationality",
-        'permanent_residence': "Nơi thường trú / Place of residence"
+        # 'date_of_birth': "Ngày sinh / Date of birth",
+        # 'date_of_expiry': "Có giá trị đến / Date of expiry",
+        # 'gender': "Giới tính / Sex",
+        # 'hometown': "Quê quán / Place of origin",
         # 'id': "Số / No.",
-        # 'name':"Họ và tên / Full name",
-        # 'date_of_birth':"Ngày sinh / Date of birth",
-        # 'sex':"Giới tính / Sex",
-        # 'nation':"Quốc tịch / Nationality",
-        # 'place_of_origin':"Quê quán / Place of origin",
-        # 'place_of_residence':"Nơi thường trú / Place of residence",
-        # 'date_of_expiry':"Có giá trị đến / Date of expiry"
+        # 'name': "Họ và tên / Full name",
+        # 'nation': "Quốc tịch / Nationality",
+        # 'permanent_residence': "Nơi thường trú / Place of residence"
+        'id': "Số / No.",
+        'name':"Họ và tên / Full name",
+        'date_of_birth':"Ngày sinh / Date of birth",
+        'sex':"Giới tính / Sex",
+        'nation':"Quốc tịch / Nationality",
+        'place_of_origin':"Quê quán / Place of origin",
+        'place_of_residence':"Nơi thường trú / Place of residence",
+        'date_of_expiry':"Có giá trị đến / Date of expiry"
     }
     cccd_back_fields = {
         'personal_iden':"Đặc điểm nhận dạng / Personal identification",
