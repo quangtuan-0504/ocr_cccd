@@ -281,6 +281,14 @@ class IdCardOCRService:
             vietocr_text = translate_onnx(img, self.rec_model)[0].tolist()
             vietocr_text = self.vocab.decode(vietocr_text)
             
+            # Clean up variables to prevent memory leaks
+            del cropped_img, img
+            
+            # Force GPU memory cleanup if CUDA is available
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
+            
             logger.info(f"Extracted text for field {str_cls}: {vietocr_text}")
             return {
                 'field_name': str_cls,
@@ -290,6 +298,10 @@ class IdCardOCRService:
             }
         except Exception as e:
             logger.error(f"Error extracting text for field {str_cls}: {e}")
+            # Ensure cleanup even on error
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            gc.collect()
             return {
                 'field_name': str_cls,
                 'text': '',

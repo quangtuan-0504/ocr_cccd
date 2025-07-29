@@ -42,46 +42,64 @@ def translate(img, model, max_seq_length=128, sos_token=1, eos_token=2):
 
 def translate_onnx(img, session, max_seq_length=128, sos_token=1, eos_token=2):
     """data: BxCxHxW"""
+    import gc  # Add garbage collection import
+    
     cnn_session, encoder_session, decoder_session = session
     
-    # create cnn input
-    cnn_input = {cnn_session.get_inputs()[0].name: img}
-    src = cnn_session.run(None, cnn_input)
-    
-    # create encoder input
-    encoder_input = {encoder_session.get_inputs()[0].name: src[0]}
-    encoder_outputs, hidden = encoder_session.run(None, encoder_input)
-    translated_sentence = [[sos_token] * len(img)]
-    max_length = 0
+    try:
+        # create cnn input
+        cnn_input = {cnn_session.get_inputs()[0].name: img}
+        src = cnn_session.run(None, cnn_input)
+        
+        # create encoder input
+        encoder_input = {encoder_session.get_inputs()[0].name: src[0]}
+        encoder_outputs, hidden = encoder_session.run(None, encoder_input)
+        
+        # Clean up intermediate variables
+        del cnn_input, encoder_input
+        
+        translated_sentence = [[sos_token] * len(img)]
+        max_length = 0
 
-    while max_length <= max_seq_length and not all(
-        np.any(np.asarray(translated_sentence).T == eos_token, axis=1)
-    ):
-        tgt_inp = translated_sentence
-        decoder_input = {
-            decoder_session.get_inputs()[0].name: tgt_inp[-1], 
-            decoder_session.get_inputs()[1].name: hidden, 
-            decoder_session.get_inputs()[2].name: encoder_outputs
-        }
+        while max_length <= max_seq_length and not all(
+            np.any(np.asarray(translated_sentence).T == eos_token, axis=1)
+        ):
+            tgt_inp = translated_sentence
+            decoder_input = {
+                decoder_session.get_inputs()[0].name: tgt_inp[-1], 
+                decoder_session.get_inputs()[1].name: hidden, 
+                decoder_session.get_inputs()[2].name: encoder_outputs
+            }
 
-        output, hidden, _ = decoder_session.run(None, decoder_input)
-        output = np.expand_dims(output, axis=1)
-        # Convert to torch tensor for efficient processing
-        output = torch.from_numpy(output)
+            output, hidden, _ = decoder_session.run(None, decoder_input)
+            output = np.expand_dims(output, axis=1)
+            # Convert to torch tensor for efficient processing
+            output = torch.from_numpy(output)
 
-        values, indices = torch.topk(output, 1)
-        indices = indices[:, -1, 0]
-        indices = indices.tolist()
+            values, indices = torch.topk(output, 1)
+            indices = indices[:, -1, 0]
+            indices = indices.tolist()
 
-        translated_sentence.append(indices)
-        max_length += 1
+            translated_sentence.append(indices)
+            max_length += 1
 
-        # Explicitly free memory
-        del output
+            # Clean up variables for this iteration
+            del output, values, indices, decoder_input
 
-    translated_sentence = np.asarray(translated_sentence).T
-
-    return translated_sentence
+        translated_sentence = np.asarray(translated_sentence).T
+        
+        # Clean up remaining variables
+        del src, encoder_outputs, hidden
+        
+        # Force garbage collection
+        gc.collect()
+        
+        return translated_sentence
+        
+    except Exception as e:
+        # Ensure cleanup even on error
+        gc.collect()
+        raise e
 
 def build_model(config):
     vocab = Vocab(config['vocab'])
