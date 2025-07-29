@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException
+from fastapi import APIRouter, File, UploadFile, HTTPException, Form
 from typing import Optional
 import base64
 import io
@@ -17,10 +17,10 @@ router = APIRouter(
 @router.post("/upload-image-flexible", response_model=OCRResponse)
 async def ocr_id_card(
     file: Optional[UploadFile] = File(None),
-    image_base64: Optional[str] = None,
-    card_type: Optional[str] = None,
-    card_side: Optional[str] = None,
-    file_name: Optional[str] = "image.jpg"
+    image_base64: Optional[str] = Form(None),
+    card_type: Optional[str] = Form(None),
+    card_side: Optional[str] = Form(None),
+    file_name: Optional[str] = Form("image.jpg")
 ):
     """
     Process an ID card image and extract information.

@@ -6,3 +6,5 @@ model/
 *tmp.py
 *analysis_error
 *.vscode
+*data_test
+*test_results.json

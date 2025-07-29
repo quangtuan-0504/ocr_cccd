@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     }
 
     # YOLOv11 OBB model for card detection
-    YOLO_MODEL_PATH: str = "model/det_card/best.onnx"
+    YOLO_MODEL_PATH: str = "model/det_card/best.pt"
     YOLO_CONF_THRESHOLD: float = 0.5
     
     yolo_cardobb_configs: Dict[str, Dict[str, Any]] = {
@@ -125,7 +125,7 @@ class Settings(BaseSettings):
         # Citizen card (cc) text detection model
         "cc": {
             "initial": {
-                "model": "model/textdet/cc/best.onnx",
+                "model": "model/detcls_text_region/best.pt",
                 "task": "detect"
             },
             "inference": {
@@ -149,14 +149,14 @@ class Settings(BaseSettings):
                 "name": 'cc_det',
                 "stream": False,
                 "verbose": False,
-                "save": True # if you want to save results image, you must pass img input as pil image
+                "save": False # if you want to save results image, you must pass img input as pil image
                 # Image not contiguous. Apply np.ascontiguousarray(im) to Annotator input images."
             }
         },
         # Citizen ID card (cccd) text detection model
         "cccd": {
             "initial": {
-                "model": "model/textdet/cccd/best.onnx",
+                "model": "model/detcls_text_region/best.pt",
                 "task": "detect"
             },
             "inference": {
@@ -180,16 +180,16 @@ class Settings(BaseSettings):
                 "name": 'cccd_det',
                 "stream": False,
                 "verbose": False,
-                "save": True
+                "save": False
             }
         }
     }
 
     # VietOCR configuration
     vietocr_configs: Dict[str, Union[str, Dict[str, Any]]] = {
-        'cnn_onnx_path': 'model/vietocr/my_cnn.onnx',
-        'encoder_onnx_path': 'model/vietocr/my_encoder.onnx',
-        'decoder_onnx_path': 'model/vietocr/my_decoder.onnx',
+        'cnn_onnx_path': 'model/vietocr/cnn.onnx',
+        'encoder_onnx_path': 'model/vietocr/encoder.onnx',
+        'decoder_onnx_path': 'model/vietocr/decoder.onnx',
         'onnx_execution_options': {
             'enable_cuda': torch.cuda.is_available()
         }
