@@ -248,7 +248,7 @@ class IdCardOCRService:
             logger.error(f"Error in text detection: {str(e)}")
         finally:
             # Clean up all remaining tensors and variables
-            del img_pil, results
+            del img, rotated_unwarped_img, results
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
             gc.collect()  # Force garbage collection
