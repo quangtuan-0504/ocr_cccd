@@ -8,6 +8,7 @@ from model.vocab import Vocab
 from model.transformerocr import VietOCR
 import math
 from PIL import Image
+import time
 
 
 def translate(img, model, max_seq_length=128, sos_token=1, eos_token=2):
@@ -42,7 +43,7 @@ def translate(img, model, max_seq_length=128, sos_token=1, eos_token=2):
 
 def translate_onnx(img, session, max_seq_length=128, sos_token=1, eos_token=2):
     """data: BxCxHxW"""
-    import gc  # Add garbage collection import
+    # import gc  # Add garbage collection import
     
     cnn_session, encoder_session, decoder_session = session
     
@@ -87,12 +88,13 @@ def translate_onnx(img, session, max_seq_length=128, sos_token=1, eos_token=2):
             del output, values, indices, decoder_input
 
         translated_sentence = np.asarray(translated_sentence).T
-        
+        # start = time.time()
         # Clean up remaining variables
         del src, encoder_outputs, hidden
         
         # Force garbage collection
-        gc.collect()
+        # gc.collect()
+        # print("------------time run clean translate_onnx:", time.time() - start)
         
         return translated_sentence
         

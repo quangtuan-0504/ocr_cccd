@@ -92,7 +92,7 @@ class IdCardOCRService:
                 del image_np, results
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-                gc.collect()
+                # gc.collect()
                 return None, {"error": "No card detected in image"}
 
             obb = results[0].obb
@@ -116,7 +116,7 @@ class IdCardOCRService:
             del image_np, results
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            gc.collect()  # Force garbage collection
+            # gc.collect()  # Force garbage collection
 
             logger.info(f"Detected card class: {self.CLASS_CARD_NAMES[best_class]} with confidence {best_score:.3f}")
             return cropped_image, {
@@ -129,7 +129,7 @@ class IdCardOCRService:
             # Ensure cleanup even on error
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            gc.collect()
+            # gc.collect()
             return None, {"error": f"Card prediction failed: {str(e)}"}
 
     def _rotate_card(self, cropped_image: np.ndarray) -> np.ndarray:
@@ -249,11 +249,13 @@ class IdCardOCRService:
         except Exception as e:
             logger.error(f"Error in text detection: {str(e)}")
         finally:
+            # start = time.time()
             # Clean up all remaining tensors and variables
             del img, rotated_unwarped_img, results
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            gc.collect()  # Force garbage collection
+            # gc.collect()  # Force garbage collection
+            # print("------------time run _detect_cls_text:", time.time() - start)
             
         return fieldname_textregion_score
 
@@ -283,14 +285,15 @@ class IdCardOCRService:
             vietocr_text = translate_onnx(img, self.rec_model)[0].tolist()
             vietocr_text = self.vocab.decode(vietocr_text)
             
+            # start = time.time()
             # Clean up variables to prevent memory leaks
             del cropped_img, img
             
             # Force GPU memory cleanup if CUDA is available
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            gc.collect()
-            
+            # gc.collect()
+            # print("------------time run _extract_text_region:", time.time() - start)
             logger.info(f"Extracted text for field {str_cls}: {vietocr_text}")
             return {
                 'field_name': str_cls,
@@ -303,7 +306,7 @@ class IdCardOCRService:
             # Ensure cleanup even on error
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
-            gc.collect()
+            # gc.collect()
             return {
                 'field_name': str_cls,
                 'text': '',
