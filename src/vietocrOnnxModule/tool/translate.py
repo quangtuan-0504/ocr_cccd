@@ -100,7 +100,7 @@ def translate_onnx(img, session, max_seq_length=128, sos_token=1, eos_token=2):
         
     except Exception as e:
         # Ensure cleanup even on error
-        gc.collect()
+        # gc.collect()
         raise e
 
 def build_model(config):
