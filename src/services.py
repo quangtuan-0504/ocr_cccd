@@ -189,13 +189,15 @@ class IdCardOCRService:
         Returns:
             List of dictionaries containing field, text region, score, and y_min.
         """
+        # Use optimized inference settings
+        inference_config = settings.yolo_textdetcls_configs[required_type]['inference'].copy()
+        inference_config["verbose"] = False
+        
         if inference_config["save"]:
             img = Image.fromarray(rotated_unwarped_img)
         else:
             img = rotated_unwarped_img
-        # Use optimized inference settings
-        inference_config = settings.yolo_textdetcls_configs[required_type]['inference'].copy()
-        inference_config["verbose"] = False
+        
         
         fieldname_textregion_score = []
         
