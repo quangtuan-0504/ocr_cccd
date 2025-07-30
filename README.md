@@ -80,18 +80,23 @@ Returns a welcome message to confirm the server is running.
 POST /ocr-id-card/upload-image-flexible
 ```
 
-This endpoint accepts either a file upload or a base64-encoded image string.
+This endpoint accepts either a file upload or a base64-encoded image string via form data.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| file | File | No | Image file to process |
-| image_base64 | String | No | Base64-encoded image string |
+| file | File | No | Image file to process (multipart/form-data) |
+| image_base64 | String | No | Base64-encoded image string (form field) |
 | card_type | String | No | Type of card: "cccd" (default) or "cc" |
 | card_side | String | No | Side of card: "front" (default) or "back" |
+| file_name | String | No | Name of file when using base64 (default: "image.jpg") |
 
 **Note:** Either `file` or `image_base64` must be provided.
+
+**Request Format:**
+- Content-Type: `multipart/form-data` for file uploads
+- Content-Type: `application/x-www-form-urlencoded` for base64 strings
 
 **Response:**
 
@@ -123,9 +128,9 @@ import requests
 
 url = "http://localhost:8000/ocr-id-card/upload-image-flexible"
 files = {"file": open("path/to/image.jpg", "rb")}
-params = {"card_type": "cccd", "card_side": "front"}
+data = {"card_type": "cccd", "card_side": "front"}
 
-response = requests.post(url, files=files, params=params)
+response = requests.post(url, files=files, data=data)
 print(response.json())
 ```
 
@@ -143,20 +148,31 @@ url = "http://localhost:8000/ocr-id-card/upload-image-flexible"
 data = {
     "image_base64": encoded_string,
     "card_type": "cccd",
-    "card_side": "front"
+    "card_side": "front",
+    "file_name": "my_image.jpg"
 }
 
-response = requests.post(url, json=data)
+response = requests.post(url, data=data)
 print(response.json())
 ```
 
-#### Example 3: cURL
+#### Example 3: cURL File Upload
 
 ```bash
 curl -X POST "http://localhost:8000/ocr-id-card/upload-image-flexible" \
      -F "file=@path/to/image.jpg" \
      -F "card_type=cccd" \
      -F "card_side=front"
+```
+
+#### Example 4: cURL Base64
+
+```bash
+curl -X POST "http://localhost:8000/ocr-id-card/upload-image-flexible" \
+     -F "image_base64=data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD..." \
+     -F "card_type=cccd" \
+     -F "card_side=front" \
+     -F "file_name=test.jpg"
 ```
 
 ## Error Handling
@@ -185,6 +201,7 @@ The application includes several optimizations:
 - LRU caching for expensive operations
 - Thread pool for concurrent processing
 - Optimized inference settings
+- GPU memory management with automatic cleanup
 
 ## License
 
@@ -195,4 +212,4 @@ The application includes several optimizations:
 - [YOLOv11](https://github.com/ultralytics/ultralytics)
 - [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR)
 - [VietOCR](https://github.com/pbcquoc/vietocr)
-- [FastAPI](https://fastapi.tiangolo.com/) 
+- [FastAPI](https://fastapi.tiangolo.com/)
