@@ -6,10 +6,8 @@ from paddleocr import DocImgOrientationClassification, TextImageUnwarping
 from ultralytics import YOLO
 import time
 import concurrent.futures
-from functools import lru_cache
 import sys
 import os
-import gc  # Add garbage collection import
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 from vietocrOnnxModule.tool.translate import translate_onnx, process_input
 from configs import settings
@@ -58,14 +56,6 @@ class IdCardOCRService:
         
         # Initialize thread pool for parallel processing
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
-        
-        # Cache for frequently accessed operations
-        self.cache_size = 128  # Adjust based on memory constraints
-        
-        # Apply caching to expensive operations
-        # self._cached_rotate_card = lru_cache(maxsize=self.cache_size)(self._rotate_card)
-        # self._cached_unwarp_card = lru_cache(maxsize=self.cache_size)(self._unwarp_card)
-
     def _predict_card(self, image: Image.Image) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
         """Detect and crop the card in the image using YOLOv11 OBB.
 
@@ -90,9 +80,6 @@ class IdCardOCRService:
             if not results or not results[0].obb:
                 # Clean up before returning
                 del image_np, results
-                if torch.cuda.is_available():
-                    torch.cuda.empty_cache()
-                # gc.collect()
                 return None, {"error": "No card detected in image"}
 
             obb = results[0].obb
@@ -108,28 +95,23 @@ class IdCardOCRService:
             best_score = scores[max_conf_idx]
 
             img_height, img_width = image_np.shape[:2]
-            validate_bounding_box(bbox=best_box, image_size=(img_width, img_height))
+            w_ratio, h_ratio = validate_bounding_box(bbox=best_box, image_size=(img_width, img_height))
             cropped_image = crop_and_rotate_image(image_np, best_box)
 
             # Clean up tensors and variables immediately
             del obb, boxes, scores, classes
             del image_np, results
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            # gc.collect()  # Force garbage collection
 
             logger.info(f"Detected card class: {self.CLASS_CARD_NAMES[best_class]} with confidence {best_score:.3f}")
             return cropped_image, {
                 "class": self.CLASS_CARD_NAMES[best_class],
-                "confidence": float(best_score)
+                "confidence": float(best_score),
+                "wh_ratio": (w_ratio,h_ratio)
             }
 
         except Exception as e:
             logger.error(f"Error predicting card: {str(e)}")
-            # Ensure cleanup even on error
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            # gc.collect()
+            
             return None, {"error": f"Card prediction failed: {str(e)}"}
 
     def _rotate_card(self, cropped_image: np.ndarray) -> np.ndarray:
@@ -142,14 +124,14 @@ class IdCardOCRService:
             Rotated image as a numpy array.
         """
         # Calculate hash of input for caching
-        # image_hash = hash(cropped_image.tobytes())
         output = self.imgorient_model.predict(
             input=cropped_image, 
             **settings.paddle_imgorient_configs['inference']
         )
         orientation = output[0]['label_names'][0]
-
         logger.info(f"Predicted orientation: {orientation}")
+        del output
+
         if orientation == "0":
             return cropped_image
         elif orientation == "180":
@@ -177,6 +159,7 @@ class IdCardOCRService:
         )
         unwarped_img = output[0]['doctr_img']
         logger.info(f"Unwarped image shape: {unwarped_img.shape}")
+        del output
         return unwarped_img
 
     def _detect_cls_text(self, rotated_unwarped_img: np.ndarray, required_type: str) -> List[Dict[str, Any]]:
@@ -237,7 +220,7 @@ class IdCardOCRService:
                         
                     cropped_img = rotated_unwarped_img[y_min:y_max, x_min:x_max]
                     fieldname_textregion_score.append({
-                        'field': classes[j],
+                        'field': self.CLASS_CARD_NAMES[required_type][classes[j]],
                         'text_region': cropped_img, # np.array
                         'score': scores[j],
                         'y_min': y_min
@@ -249,17 +232,12 @@ class IdCardOCRService:
         except Exception as e:
             logger.error(f"Error in text detection: {str(e)}")
         finally:
-            # start = time.time()
             # Clean up all remaining tensors and variables
             del img, rotated_unwarped_img, results
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            # gc.collect()  # Force garbage collection
-            # print("------------time run _detect_cls_text:", time.time() - start)
             
         return fieldname_textregion_score
 
-    def _extract_text_region(self, region_data: Dict[str, Any], required_type: str) -> Dict[str, Any]:
+    def _extract_text_region(self, region_data: Dict[str, Any]) -> Dict[str, Any]:
         """Extract text from a single region using VietOCR.
         
         Args:
@@ -269,8 +247,7 @@ class IdCardOCRService:
         Returns:
             Dictionary with field name, extracted text and metadata.
         """
-        cls = region_data['field']
-        str_cls = self.CLASS_FIELD_NAME[required_type][cls]
+        str_cls = region_data['field']
         y_min = region_data['y_min']
         score = region_data['score']
         
@@ -285,15 +262,9 @@ class IdCardOCRService:
             vietocr_text = translate_onnx(img, self.rec_model)[0].tolist()
             vietocr_text = self.vocab.decode(vietocr_text)
             
-            # start = time.time()
             # Clean up variables to prevent memory leaks
             del cropped_img, img
             
-            # Force GPU memory cleanup if CUDA is available
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            # gc.collect()
-            # print("------------time run _extract_text_region:", time.time() - start)
             logger.info(f"Extracted text for field {str_cls}: {vietocr_text}")
             return {
                 'field_name': str_cls,
@@ -303,10 +274,6 @@ class IdCardOCRService:
             }
         except Exception as e:
             logger.error(f"Error extracting text for field {str_cls}: {e}")
-            # Ensure cleanup even on error
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
-            # gc.collect()
             return {
                 'field_name': str_cls,
                 'text': '',

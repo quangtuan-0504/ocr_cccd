@@ -30,7 +30,9 @@ class Settings(BaseSettings):
 
     # YOLOv11 OBB model for card detection
     YOLO_MODEL_PATH: str = "model/det_card/best.pt"
-    YOLO_CONF_THRESHOLD: float = 0.5
+    YOLO_CONF_THRESHOLD_OBB: float = 0.85
+    YOLO_CONF_THRESHOLD_DET: float = 0.5
+
     
     yolo_cardobb_configs: Dict[str, Dict[str, Any]] = {
         "initial": {
@@ -38,7 +40,7 @@ class Settings(BaseSettings):
             "task": "obb"
         },
         "inference": {
-            "conf": YOLO_CONF_THRESHOLD,
+            "conf": YOLO_CONF_THRESHOLD_OBB,
             "iou": 0.3,
             "imgsz": (640, 640),
             "device": "cuda" if torch.cuda.is_available() else "cpu",
@@ -101,7 +103,8 @@ class Settings(BaseSettings):
             7: 'date_of_issue',
             8: 'date_of_expiry',
             9: 'face',
-            10: 'qr'
+            10: 'qr',
+            11: 'mrz'
         },
         # Citizen ID card (cccd) field classes
         'cccd': {
@@ -116,7 +119,8 @@ class Settings(BaseSettings):
             8: 'personal_iden',
             9: 'date_of_issue',
             10: 'face',
-            11: 'qr'
+            11: 'qr',
+            12: 'mrz'
         }
     }
 
@@ -129,7 +133,7 @@ class Settings(BaseSettings):
                 "task": "detect"
             },
             "inference": {
-                "conf": YOLO_CONF_THRESHOLD,
+                "conf": YOLO_CONF_THRESHOLD_DET,
                 "iou": 0.3,
                 "imgsz": (640, 640),
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
@@ -160,7 +164,7 @@ class Settings(BaseSettings):
                 "task": "detect"
             },
             "inference": {
-                "conf": YOLO_CONF_THRESHOLD,
+                "conf": YOLO_CONF_THRESHOLD_DET,
                 "iou": 0.3,
                 "imgsz": (640, 640),
                 "device": "cuda" if torch.cuda.is_available() else "cpu",

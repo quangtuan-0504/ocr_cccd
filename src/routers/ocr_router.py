@@ -14,13 +14,17 @@ router = APIRouter(
     tags=["OCR"]
 )
 
-@router.post("/upload-image-flexible", response_model=OCRResponse)
+@router.post("/upload-image-flexible")
 async def ocr_id_card(
     file: Optional[UploadFile] = File(None),
     image_base64: Optional[str] = Form(None),
     card_type: Optional[str] = Form(None),
     card_side: Optional[str] = Form(None),
-    file_name: Optional[str] = Form("image.jpg")
+    file_name: Optional[str] = Form("image.jpg"),
+    mime: Optional[str] = Form(None),
+    postname: Optional[str] = Form(None),
+    sessionID: Optional[str] = Form(None),
+    deviceInfo: Optional[str] = Form(None),
 ):
     """
     Process an ID card image and extract information.
@@ -63,16 +67,13 @@ async def ocr_id_card(
         else:
             raise HTTPException(status_code=400, detail="Please provide either a file or base64 string")
         
-        # Set defaults if not provided
-        card_type = card_type or "cccd"
-        card_side = card_side or "front"
+    
         
         # Predict using the OCR service
         start = time.time()
         result = resources['ocr_service'].process_id_card(
             image=image,
-            required_type=card_type,
-            required_side=card_side,
+        
         )
         processing_time = time.time() - start
         logger.info(f'Time per request: {processing_time:.3f}s')
