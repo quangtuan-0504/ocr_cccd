@@ -11,7 +11,19 @@ from exceptions import (
 )
 from configs import settings
 from logger import logger
-
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+from schemas import (
+    cccd_front,
+    cccd_back,
+    cc_front,
+    cc_back,
+    cccd_front_fields,
+    cccd_back_fields,
+    cc_front_fields,
+    cc_back_fields
+)
 def validate_image_quality(image: Image.Image) -> None:
     """
     Validate the quality of the input image.
@@ -189,7 +201,11 @@ def validate_bounding_box(bbox: np.ndarray, image_size: Tuple[int, int]) -> None
         # Check aspect ratio
         if aspect_ratio < settings.ASPECT_RATIO_MIN or aspect_ratio > settings.ASPECT_RATIO_MAX:
             raise BadBoxError(f"Card aspect ratio is invalid (not taken from front): {aspect_ratio:.3f} not in [{settings.ASPECT_RATIO_MIN}, {settings.ASPECT_RATIO_MAX}]")
-    
+        # Compute width, height ratio
+        w_ratio = box_width/img_width
+        h_ratio = box_height/img_height
+        return w_ratio, h_ratio
+
     except BadBoxError:
         # Re-raise our custom exceptions
         raise
@@ -284,76 +300,52 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
         logger.error(f"Invalid card side: {require_side}")
         raise ValueError("require_side must be 'front' or 'back'")
     
-    cc_front_fields = {
-        'id' : "Số định danh cá nhân / Personal identification number",
-        'name': "Họ, chữ đệm và tên khai sinh / Full name",
-        'date_of_birth' :"Ngày, tháng, năm sinh / Date of birth",
-        'sex' :"Giới tính / Sex",
-        'nation' :"Quốc tịch / Nationality"
-    }
-    cc_back_fields = {
-        'place_of_residence' :"Nơi cư trú / Place of residence",
-        'place_of_birth' :"Nơi đăng ký khai sinh / Place of birth",
-        'date_of_issue' :"Ngày, tháng, năm cấp / Date of issue",
-        'date_of_expiry' :"Ngày, tháng, năm hết hạn / Date of expiry"
-    }
-    cccd_front_fields = {
-        # toy dataset
-        # 'date_of_birth': "Ngày sinh / Date of birth",
-        # 'date_of_expiry': "Có giá trị đến / Date of expiry",
-        # 'gender': "Giới tính / Sex",
-        # 'hometown': "Quê quán / Place of origin",
-        # 'id': "Số / No.",
-        # 'name': "Họ và tên / Full name",
-        # 'nation': "Quốc tịch / Nationality",
-        # 'permanent_residence': "Nơi thường trú / Place of residence"
-        'id': "Số / No.",
-        'name':"Họ và tên / Full name",
-        'date_of_birth':"Ngày sinh / Date of birth",
-        'sex':"Giới tính / Sex",
-        'nation':"Quốc tịch / Nationality",
-        'place_of_origin':"Quê quán / Place of origin",
-        'place_of_residence':"Nơi thường trú / Place of residence",
-        'date_of_expiry':"Có giá trị đến / Date of expiry"
-    }
-    cccd_back_fields = {
-        'personal_iden':"Đặc điểm nhận dạng / Personal identification",
-        'date_of_issue':"Ngày, tháng, năm / Date, month, year"
-    }
+    # print(fieldname_text)
     
     # Chọn dictionary đầu ra dựa trên require_type và require_side
     if require_type == 'cc' and require_side == 'front':
-        field_mapping = cc_front_fields.copy()
+        field_mapping = cc_front_fields
+        field_res =cc_front.copy()
     elif require_type == 'cccd' and require_side == 'front':
-        field_mapping = cccd_front_fields.copy()
+        field_mapping = cccd_front_fields
+        field_res =cccd_front.copy()
     elif require_type == 'cc' and require_side == 'back':
-        field_mapping = cc_back_fields.copy()
+        field_mapping = cc_back_fields
+        field_res =cc_back.copy()
     elif require_type == 'cccd' and require_side == 'back':
-        field_mapping = cccd_back_fields.copy()
+        field_mapping = cccd_back_fields
+        field_res =cccd_back.copy()
     else:
         raise ValueError("Invalid require_type or require_side. Use 'cc' or 'cccd' for type and 'front' for side.")
     
     try:
-        # Define dictionaries for cc and cccd
-        result = {}
-        
         logger.info(f"Mapping text for {require_type} {require_side} side")
         logger.debug(f"Input fields: {list(fieldname_text.keys())}")
-        
-        result = {}
-        for field in field_mapping.values():
-            result[field] = {}
+       
         # Duyệt qua fieldname_text để gán giá trị vào dictionary đầu ra
         for field, value in fieldname_text.items():
+            
             if field in field_mapping:
                 # Chọn tên trường tương ứng dựa trên require_type
                 target_field = field_mapping[field]
-                result[target_field] = {'text': value['text'], 'score': round(float(value['score']),2)}
-        
-        logger.info(f"Successfully mapped {len(result)} fields")
-        return result
+                field_res[target_field] = value['text']
+                field_res[target_field+'_prob'] = round(float(value['score']),2)
+                if target_field == 'address':
+                    pass
+                    # street, ward, district, province = value['text'].split(',')
+                    # field_res['custAddress']['province'] = province
+                    # field_res['custAddress']['district'] = district
+                    # field_res['custAddress']['ward'] = ward
+                    # field_res['custAddress']['street'] = street
+                elif target_field == 'mrz':
+                    pass
+                    # TODO
+        field_res['type'] = require_type+'_'+require_side
+        # field_res['overall_score'] = 
+        logger.info(f"Successfully mapped {len(field_res)} fields")
+        return field_res
         
     except Exception as e:
         logger.error(f"Error mapping text to card: {e}")
         # Return partial results if available, otherwise empty dict
-        return result if 'result' in locals() else {}
+        return field_res if 'street' in locals() else {}

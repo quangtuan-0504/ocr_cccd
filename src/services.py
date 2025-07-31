@@ -282,7 +282,7 @@ class IdCardOCRService:
                 'error': str(e)
             }
 
-    def _extract_text(self, fieldname_textregion_score: List[Dict[str, Any]], required_type: str) -> Dict[str, Dict[str, Any]]:
+    def _extract_text(self, fieldname_textregion_score: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         """Extract text from detected regions using VietOCR with parallel processing.
 
         Args:
@@ -296,18 +296,20 @@ class IdCardOCRService:
             if not fieldname_textregion_score:
                 logger.warning("No text regions to extract")
                 return {}
-                
+            
+            face_qr_img = {}
             # Use parallel processing for text extraction
             futures = []
             for region_data in fieldname_textregion_score:
-                futures.append(
-                    self.executor.submit(
-                        self._extract_text_region, 
-                        region_data, 
-                        required_type
+                if region_data['field'] not in ['face,qr']:
+                    futures.append(
+                        self.executor.submit(
+                            self._extract_text_region, 
+                            region_data
+                        )
                     )
-                )
-            
+                else:
+                    face_qr_img[region_data['field']] = region_data['text_region']
             # Collect results
             field_text = {}
             for future in concurrent.futures.as_completed(futures):
@@ -330,19 +332,16 @@ class IdCardOCRService:
                 else:
                     field_text[str_cls] = {'text': text, 'y_min': y_min, 'score': score}
 
-            return field_text
+            return field_text, face_qr_img 
         except Exception as e:
             logger.error(f"Error extracting text: {str(e)}")
             return {"error": f"Text extraction failed: {str(e)}"}
 
-    def process_id_card(self, image: Image.Image, required_type: str = "cccd", required_side: str = "front") -> Dict[str, Any]:
+    def process_id_card(self, image: Image.Image) -> Dict[str, Any]:
         """Process an ID card image and extract information.
 
         Args:
             image: Input image in PIL format.
-            required_type: Card type ("cccd" or "cc").
-            required_side: Card side ("front" or "back").
-
         Returns:
             Dictionary containing card information and extracted text or error message.
         """
@@ -356,71 +355,92 @@ class IdCardOCRService:
             # Detect and crop card
             start_time = time.time()
             cropped_image, detection_info = self._predict_card(image)
-            cv2.imwrite('analysis_error/img_cropped.jpg', cropped_image)
+            # cv2.imwrite('analysis_error/img_cropped.jpg', cropped_image)
             logger.info(f'Time for crop card: {time.time() - start_time:.3f}s')
             
             if "error" in detection_info:
-                return {"status": "error", "message": detection_info["error"]}
+                return {
+                    "errorCode": "2",
+                    "errorMessage":detection_info["error"],
+                    "data": []
+                }
 
             # Validate card type and side
             detected_class = detection_info["class"]
-            if required_type not in detected_class.split('_'):
-                return {"status": "error", "message": f"Wrong card type: required {required_type}, detected {detected_class}"}
-            if required_side not in detected_class.split('_'):
-                return {"status": "error", "message": f"Wrong card side: required {required_side}, detected {detected_class}"}
             if "other_card" in detected_class:
-                return {"status": "error", "message": "Detected card is not a valid ID card."}
+                return {
+                    "errorCode": "2",
+                    "errorMessage": "Detected card is not a valid ID card.",
+                    "data": []
+                }
 
             # Process image: rotate, unwarp, detect text, and extract
-            # Use cached versions for better performance
             start_time = time.time()
-            
-            # Process rotation and unwarping in parallel
-            # rotate_future = self.executor.submit(self._cached_rotate_card, cropped_image)
-            
-            # try:
-            #     rotated_img = rotate_future.result(timeout=5.0)  # 5 second timeout
-            #     unwarped_img = self._cached_unwarp_card(rotated_img)
-            #     logger.info(f'Time for rotate and unwarp: {time.time() - start_time:.3f}s')
-            # except concurrent.futures.TimeoutError:
-            #     logger.warning("Rotation timed out, using original image")
-            #     unwarped_img = cropped_image
-
             rotated_img = self._rotate_card(cropped_image)
-            unwarped_img = self._unwarp_card(rotated_img)
+            
+            w_ratio = detection_info['wh_ratio'][0]
+            h_ratio = detection_info['wh_ratio'][1]
+            if w_ratio < 0.9 and h_ratio < 0.9:
+                unwarped_img = self._unwarp_card(rotated_img)
+            else:
+                unwarped_img = rotated_img
             logger.info(f'Time for rotate and unwarp: {time.time() - start_time:.3f}s')
             
+            card_type, card_side = detected_class.split('_')
             # Detect text regions
             start_time = time.time()
-            text_regions = self._detect_cls_text(unwarped_img, required_type)
+            regions = self._detect_cls_text(
+                rotated_unwarped_img=unwarped_img,
+                required_type = card_type
+            )
             logger.info(f'Time for text region detection: {time.time() - start_time:.3f}s')
 
             # Extract text from regions (uses parallel processing internally)
             start_time = time.time()
-            field_text = self._extract_text(text_regions, required_type)
+            field_text, face_qr = self._extract_text(
+                fieldname_textregion_score = regions
+            )
             logger.info(f'Time for text extraction: {time.time() - start_time:.3f}s')
 
             if "error" in field_text:
-                return {"status": "error", "message": field_text["error"]}
+                return {
+                    "errorCode": "3",
+                    "errorMessage": field_text["error"],
+                    "data": []
+                }
 
             # Map extracted text to card fields
             start_time = time.time()
-            mapped_text = map_text2card(fieldname_text=field_text, require_type=required_type, require_side=required_side)
+            mapped_text = map_text2card(fieldname_text=field_text, require_type=card_type, require_side=card_side)
             logger.info(f'Time for map field: {time.time() - start_time:.3f}s')
 
             return {
-                "status": "success",
-                "card_info": detection_info,
-                # 'data': field_text
-                "data": mapped_text
+                "errorCode": "0",
+                "errorMessage": "no error",
+                "data": [mapped_text]
             }
 
         except BadCaptureError as e:
             logger.error(f"Image quality issue: {str(e)}")
-            return {"status": "error", "message": str(e)}
+            # return {"status": "error", "message": str(e)}
+            return {
+                "errorCode": "1",
+                "errorMessage": str(e),
+                "data": []
+            }
         except CardDetectionError as e:
             logger.error(f"Card detection issue: {str(e)}")
-            return {"status": "error", "message": str(e)}
+            # return {"status": "error", "message": str(e)}
+            return {
+                "errorCode": "2",
+                "errorMessage": str(e),
+                "data": []
+            }
         except Exception as e:
             logger.error(f"Error processing ID card: {str(e)}")
-            return {"status": "error", "message": f"ID card processing failed: {str(e)}"}
+            # return {"status": "error", "message": f"ID card processing failed: {str(e)}"}
+            return {
+                "errorCode": "1",
+                "errorMessage": f"ID card processing failed: {str(e)}",
+                "data": []
+            }
