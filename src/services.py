@@ -220,7 +220,7 @@ class IdCardOCRService:
                         
                     cropped_img = rotated_unwarped_img[y_min:y_max, x_min:x_max]
                     fieldname_textregion_score.append({
-                        'field': self.CLASS_CARD_NAMES[required_type][classes[j]],
+                        'field': self.CLASS_FIELD_NAME[required_type][classes[j]],
                         'text_region': cropped_img, # np.array
                         'score': scores[j],
                         'y_min': y_min
