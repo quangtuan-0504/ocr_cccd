@@ -8,3 +8,4 @@ model/
 *.vscode
 *data_test
 *test_results.json
+.env-docker

@@ -444,3 +444,6 @@ class IdCardOCRService:
                 "errorMessage": f"ID card processing failed: {str(e)}",
                 "data": []
             }
+        finally:
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()

@@ -15,14 +15,9 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 from schemas import (
-    cccd_front,
-    cccd_back,
-    cc_front,
-    cc_back,
-    cccd_front_fields,
-    cccd_back_fields,
-    cc_front_fields,
-    cc_back_fields
+    format_res,
+    cccd_map,
+    cc_map
 )
 def validate_image_quality(image: Image.Image) -> None:
     """
@@ -301,51 +296,63 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
         raise ValueError("require_side must be 'front' or 'back'")
     
     # print(fieldname_text)
-    
-    # Chọn dictionary đầu ra dựa trên require_type và require_side
-    if require_type == 'cc' and require_side == 'front':
-        field_mapping = cc_front_fields
-        field_res =cc_front.copy()
-    elif require_type == 'cccd' and require_side == 'front':
-        field_mapping = cccd_front_fields
-        field_res =cccd_front.copy()
-    elif require_type == 'cc' and require_side == 'back':
-        field_mapping = cc_back_fields
-        field_res =cc_back.copy()
-    elif require_type == 'cccd' and require_side == 'back':
-        field_mapping = cccd_back_fields
-        field_res =cccd_back.copy()
+   
+    data = format_res.copy()
+    if require_type == 'cc':
+        field_mapping = cc_map.copy()
+    elif require_type == 'cccd':
+        field_mapping = cccd_map.copy()
     else:
         raise ValueError("Invalid require_type or require_side. Use 'cc' or 'cccd' for type and 'front' for side.")
-    
+   
     try:
         logger.info(f"Mapping text for {require_type} {require_side} side")
         logger.debug(f"Input fields: {list(fieldname_text.keys())}")
        
         # Duyệt qua fieldname_text để gán giá trị vào dictionary đầu ra
+        average_score = 0
+        cnt = 0
         for field, value in fieldname_text.items():
-            
+           
             if field in field_mapping:
                 # Chọn tên trường tương ứng dựa trên require_type
                 target_field = field_mapping[field]
-                field_res[target_field] = value['text']
-                field_res[target_field+'_prob'] = round(float(value['score']),2)
+                data[target_field] = value['text']
+                score = round(float(value['score']),2)
+                data[target_field+'_prob'] = score
+                average_score+=score
+                cnt+=1
                 if target_field == 'address':
-                    pass
-                    # street, ward, district, province = value['text'].split(',')
-                    # field_res['custAddress']['province'] = province
-                    # field_res['custAddress']['district'] = district
-                    # field_res['custAddress']['ward'] = ward
-                    # field_res['custAddress']['street'] = street
+                    address = value['text']
+                    address_split = address.split(',')
+                    address_split.reverse()
+                    province, district, ward, *street = address_split
+                    street.reverse()
+                    street = ', '.join(street).strip()
+                    data['custAddress']['province'] = province
+                    data['custAddress']['district'] = district
+                    data['custAddress']['ward'] = ward
+                    data['custAddress']['street'] = street
                 elif target_field == 'mrz':
                     pass
                     # TODO
-        field_res['type'] = require_type+'_'+require_side
-        # field_res['overall_score'] = 
-        logger.info(f"Successfully mapped {len(field_res)} fields")
-        return field_res
-        
+        if require_type == "cc" and require_side == 'front':
+            data['type'] = 'cc_front'
+            data['type_new'] = 'cccd_chip_front'
+        elif require_type == "cc" and require_side == 'back':
+            data['type'] = 'cc_back'
+            data['type_new'] = 'chip_back'
+        elif require_type == "cccd" and require_side == 'front':
+            data['type'] = 'chip_front'
+            data['type_new'] = 'cccd_chip_front'
+        elif require_type == "cccd" and require_side == 'back':
+            data['type'] = 'chip_front'
+            data['type_new'] = 'chip_back'
+        data['overall_score'] = round(average_score/cnt,2)
+        logger.info(f"Successfully mapped {len(data)} fields")
+        return data
+       
     except Exception as e:
         logger.error(f"Error mapping text to card: {e}")
         # Return partial results if available, otherwise empty dict
-        return field_res if 'street' in locals() else {}
+        return data if 'street' in locals() else {}

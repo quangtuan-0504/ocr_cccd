@@ -145,3 +145,123 @@ cc_back_fields = {
     'date_of_expiry' :'doe',
     'mrz' : 'mrz'
 }
+
+format_res = {    
+    "id": "",
+ 
+    "id_prob": "",
+ 
+    "name": "",
+ 
+    "name_prob": "",
+ 
+    "dob": "",
+ 
+    "dob_prob": "",
+ 
+    "sex": "",
+ 
+    "sex_prob": "",
+ 
+    "nationality": "",
+ 
+    "nationality_prob": "",
+ 
+    "home": "",
+ 
+    "home_prob": "",
+ 
+    "address": "",
+ 
+    "address_prob": "",
+ 
+    "doe": "",
+ 
+    "doe_prob": "",
+ 
+    "religion": "",
+ 
+    "religion_prob": "",
+ 
+    "ethnicity": "",
+ 
+    "ethnicity_prob": "",
+ 
+    "features": "",
+ 
+    "features_prob": "",
+ 
+    "issue_date": "",
+ 
+    "issue_date_prob": "",
+ 
+    "issue_loc": "",
+ 
+    "issue_loc_prob": "",
+ 
+    "back_type": "N/A",
+ 
+    "overall_score": "",
+ 
+    "type": "",
+ 
+    "type_new": "",
+ 
+    "mrz": "N/A",
+ 
+    "mrz_prob": "N/A",
+ 
+    "mrz_details": {
+ 
+        "id": "N/A",
+ 
+        "name": "N/A",
+ 
+        "doe": "N/A",
+ 
+        "dob": "N/A",
+ 
+        "nationality": "N/A",
+ 
+        "sex": "N/A"
+ 
+    },
+ 
+    "custAddress": {
+ 
+        "province": "",
+ 
+        "district": "",
+ 
+        "ward": "",
+ 
+        "street": ""
+ 
+    }
+}
+cccd_map = {
+    'id': 'id',
+    'name':'name',
+    'date_of_birth':'dob',
+    'sex':'sex',
+    'nation':'nationality',
+    'place_of_origin':'home',
+    'place_of_residence':'address',
+    'date_of_expiry':'doe',
+    'personal_iden':'features',
+    'date_of_issue':'issue_date',
+    'mrz': 'mrz'
+}
+cc_map = {
+    'id' : 'id',
+    'name': 'name',
+    'date_of_birth' :'dob',
+    'sex' : 'sex',
+    'nation' :'nationality',
+    'place_of_residence' :'address',
+    'place_of_birth' :'home',
+    'date_of_issue' :'issue_date',
+    'date_of_expiry' :'doe',
+    'mrz' : 'mrz'
+}
+ 
