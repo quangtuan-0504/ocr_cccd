@@ -219,12 +219,30 @@ class IdCardOCRService:
                         continue
                         
                     cropped_img = rotated_unwarped_img[y_min:y_max, x_min:x_max]
-                    fieldname_textregion_score.append({
-                        'field': self.CLASS_FIELD_NAME[required_type][classes[j]],
-                        'text_region': cropped_img, # np.array
-                        'score': scores[j],
-                        'y_min': y_min
-                    })
+                    str_cls = self.CLASS_FIELD_NAME[required_type][classes[j]]
+                    if str_cls == 'mrz':
+                        # Split MRZ into 3 equal horizontal parts
+                        height = cropped_img.shape[0]
+                        part_height = height // 3
+                        
+                        for line_idx in range(3):
+                            start_y = line_idx * part_height
+                            end_y = (line_idx + 1) * part_height if line_idx < 2 else height
+                            mrz_line = cropped_img[start_y:end_y, :]
+                            
+                            fieldname_textregion_score.append({
+                                'field': str_cls,
+                                'text_region': mrz_line,
+                                'score': scores[j],
+                                'y_min': y_min + start_y
+                            })
+                    else:
+                        fieldname_textregion_score.append({
+                            'field': str_cls,
+                            'text_region': cropped_img, # np.array
+                            'score': scores[j],
+                            'y_min': y_min
+                        })
                 
                 # Clean up tensors for this result
                 del boxes, boxes_xyxy, scores, classes
@@ -438,7 +456,7 @@ class IdCardOCRService:
             }
         except Exception as e:
             logger.error(f"Error processing ID card: {str(e)}")
-            # return {"status": "error", "message": f"ID card processing failed: {str(e)}"}
+            # return {"status": "error", "message": str(e)}
             return {
                 "errorCode": "1",
                 "errorMessage": f"ID card processing failed: {str(e)}",

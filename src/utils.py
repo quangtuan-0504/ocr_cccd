@@ -266,7 +266,21 @@ def crop_and_rotate_image(image: np.ndarray, box: np.ndarray, expand_factor: flo
         return cropped
     except Exception as e:
         raise(f"Error in cropping/rotating image: {str(e)}")
-
+def parse_mrz(mrz: str) -> Dict[str, str]:
+    def format_date(date_str: str) -> str:
+        year = date_str[:2]
+        month = date_str[2:4]
+        day = date_str[4:6]
+        return f"{day}/{month}/20{year}"
+    res = {
+        "id": mrz[15:27],
+        "name": ' '.join(mrz[55:].replace('<', ' ').split()), # .split() tự động xóa ' ' dư thừa luôn.
+        "doe": format_date(mrz[37:43]),
+        "dob": format_date(mrz[29:35]),
+        "nationality": mrz[2:5],
+        "sex": mrz[36]
+    }
+    return res
 def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, require_side: str) -> Dict[str, Any]:
     """
     Map extracted text fields to card structure.
@@ -334,8 +348,7 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
                     data['custAddress']['ward'] = ward
                     data['custAddress']['street'] = street
                 elif target_field == 'mrz':
-                    pass
-                    # TODO
+                    data['mrz_details'] = parse_mrz(value['text'])
         if require_type == "cc" and require_side == 'front':
             data['type'] = 'cc_front'
             data['type_new'] = 'cccd_chip_front'
