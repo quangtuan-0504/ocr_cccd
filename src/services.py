@@ -220,29 +220,13 @@ class IdCardOCRService:
                         
                     cropped_img = rotated_unwarped_img[y_min:y_max, x_min:x_max]
                     str_cls = self.CLASS_FIELD_NAME[required_type][classes[j]]
-                    if str_cls == 'mrz':
-                        # Split MRZ into 3 equal horizontal parts
-                        height = cropped_img.shape[0]
-                        part_height = height // 3
-                        
-                        for line_idx in range(3):
-                            start_y = line_idx * part_height
-                            end_y = (line_idx + 1) * part_height if line_idx < 2 else height
-                            mrz_line = cropped_img[start_y:end_y, :]
-                            
-                            fieldname_textregion_score.append({
-                                'field': str_cls,
-                                'text_region': mrz_line,
-                                'score': scores[j],
-                                'y_min': y_min + start_y
-                            })
-                    else:
-                        fieldname_textregion_score.append({
-                            'field': str_cls,
-                            'text_region': cropped_img, # np.array
-                            'score': scores[j],
-                            'y_min': y_min
-                        })
+                    
+                    fieldname_textregion_score.append({
+                        'field': str_cls,
+                        'text_region': cropped_img, # np.array
+                        'score': scores[j],
+                        'y_min': y_min
+                    })
                 
                 # Clean up tensors for this result
                 del boxes, boxes_xyxy, scores, classes
