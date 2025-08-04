@@ -52,7 +52,7 @@ ENV HTTPS_PROXY=""
 ENV PYTHONPATH=/app/src
  
 # Mở port 8000 cho FastAPI
-EXPOSE 8088
+EXPOSE 8000
  
 # Lệnh chạy ứng dụng
 CMD ["python3", "src/main.py"]
@@ -88,6 +88,6 @@ CMD ["python3", "src/main.py"]
 # docker run --gpus all \
 #   -v $(pwd)/model:/app/model \
 #   -v $(pwd)/src:/app/src \
-#   -p 8088:8088 \
+#   -p 8000:8000 \
 #   --name ocr-container \
 #   ocr-app

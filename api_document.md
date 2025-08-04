@@ -1,145 +1,262 @@
-### API Documentation
+# OCR ID Card API Documentation
 
-Once the server is running, you can access the interactive API documentation at:
-- Swagger UI: `http://localhost:8000/docs`
-- ReDoc: `http://localhost:8000/redoc`
+## Overview
+This API provides OCR (Optical Character Recognition) functionality for Vietnamese ID cards (CCCD and CC). It can process images uploaded as files or base64 encoded strings and extract text information from the cards.
 
-### API Endpoints
-
-#### 1. Root Endpoint
-
+## Base URL
 ```
-GET /
+/ocr-id-card
 ```
 
-Returns a welcome message to confirm the server is running.
+## Endpoints
 
-#### 2. OCR Processing Endpoint
+### POST /upload-image-flexible
 
+Process an ID card image and extract information using advanced OCR technology.
+
+#### Request Parameters
+
+The API accepts both form-data and multipart/form-data requests with the following parameters:
+
+| Parameter | Type | Required | Description | Default |
+|-----------|------|----------|-------------|---------|
+| `file` | UploadFile | No* | Image file upload (JPEG, PNG, etc.) | None |
+| `image_base64` | string | No* | Base64 encoded image string | None |
+| `card_type` | string | No | Type of card (cccd, cc) | Auto-detected |
+| `card_side` | string | No | Side of card (front, back) | Auto-detected |
+| `file_name` | string | No | Name of file (used when image_base64 is provided) | "image.jpg" |
+| `mime` | string | No | MIME type of the image | None |
+| `postname` | string | No | Additional metadata | None |
+| `sessionID` | string | No | Session identifier for tracking | None |
+| `deviceInfo` | string | No | Device information | None |
+
+*Note: Either `file` or `image_base64` must be provided.
+
+#### Request Examples
+
+**File Upload:**
+```bash
+curl -X POST "http://localhost:8000/ocr-id-card/upload-image-flexible" \
+  -H "Content-Type: multipart/form-data" \
+  -F "file=@/path/to/id_card.jpg" \
+  -F "sessionID=12345"
 ```
-POST /ocr-id-card/upload-image-flexible
+
+**Base64 Upload:**
+```bash
+curl -X POST "http://localhost:8000/ocr-id-card/upload-image-flexible" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "image_base64=data:image/jpeg;base64,/9j/4AAQSkZJRgABA..." \
+  -d "file_name=id_card.jpg" \
+  -d "sessionID=12345"
 ```
 
-This endpoint accepts either a file upload or a base64-encoded image string via form data.
+#### Response Format
 
-**Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| file | File | No | Image file to process (multipart/form-data) |
-| image_base64 | String | No | Base64-encoded image string (form field) |
-| card_type | String | No | Type of card: "cccd" (default) or "cc" |
-| card_side | String | No | Side of card: "front" (default) or "back" |
-| file_name | String | No | Name of file when using base64 (default: "image.jpg") |
-
-**Note:** Either `file` or `image_base64` must be provided.
-
-**Request Format:**
-- Content-Type: `multipart/form-data` for file uploads
-- Content-Type: `application/x-www-form-urlencoded` for base64 strings
-
-**Response:**
+The API returns a JSON response with the following structure:
 
 ```json
 {
-  "status": "success",
-  "card_info": {
-    "class": "cccd_front",
-    "confidence": 0.98
-  },
-  "data": {
-    "Số / No.":{"text":"001202012345","score": 0.9},
-    "Họ và tên / Full name":{"text":"NGUYỄN VĂN A","score": 0.9},
-    "Ngày sinh / Date of birth":{"text":"01/01/1990","score": 0.9},
-    "Giới tính / Sex":{"text":"Nam","score": 0.9},
-    "Quốc tịch / Nationality":{"text":"Việt Nam","score": 0.9},
-    "Quê quán / Place of origin":{"text":"Hà Nội","score": 0.9},
-    "Nơi thường trú / Place of residence":{"text":"123 Đường ABC, Phường XYZ, Quận 1, TP.HCM","score": 0.9},
-    "Có giá trị đến / Date of expiry":{"text":"01/01/2042","score": 0.9}
-  }
+  "errorCode": "string",
+  "errorMessage": "string", 
+  "data": [
+    {
+      "card_type": "string",
+      "card_side": "string",
+      "extracted_fields": {
+        "field_name": "extracted_text",
+        ...
+      }
+    }
+  ]
 }
 ```
 
-### Examples
+#### Success Response (errorCode: "0")
 
-#### Example 1: File Upload
-
-```python
-import requests
-
-url = "http://localhost:8000/ocr-id-card/upload-image-flexible"
-files = {"file": open("path/to/image.jpg", "rb")}
-data = {"card_type": "cccd", "card_side": "front"}
-
-response = requests.post(url, files=files, data=data)
-print(response.json())
-```
-
-#### Example 2: Base64 Image
-
-```python
-import requests
-import base64
-
-# Read image and convert to base64
-with open("path/to/image.jpg", "rb") as image_file:
-    encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
-
-url = "http://localhost:8000/ocr-id-card/upload-image-flexible"
-data = {
-    "image_base64": encoded_string,
-    "card_type": "cccd",
-    "card_side": "front",
-    "file_name": "my_image.jpg"
+```json
+{
+  "errorCode": "0",
+  "errorMessage": "no error",
+  "data": [
+    {    
+        "id": "",
+    
+        "id_prob": "",
+    
+        "name": "",
+    
+        "name_prob": "",
+    
+        "dob": "",
+    
+        "dob_prob": "",
+    
+        "sex": "",
+    
+        "sex_prob": "",
+    
+        "nationality": "",
+    
+        "nationality_prob": "",
+    
+        "home": "",
+    
+        "home_prob": "",
+    
+        "address": "",
+    
+        "address_prob": "",
+    
+        "doe": "",
+    
+        "doe_prob": "",
+    
+        "religion": "",
+    
+        "religion_prob": "",
+    
+        "ethnicity": "",
+    
+        "ethnicity_prob": "",
+    
+        "features": "",
+    
+        "features_prob": "",
+    
+        "issue_date": "",
+    
+        "issue_date_prob": "",
+    
+        "issue_loc": "",
+    
+        "issue_loc_prob": "",
+    
+        "back_type": "N/A",
+    
+        "overall_score": "",
+    
+        "type": "",
+    
+        "type_new": "",
+    
+        "mrz": "N/A",
+    
+        "mrz_prob": "N/A",
+    
+        "mrz_details": {
+    
+            "id": "N/A",
+    
+            "name": "N/A",
+    
+            "doe": "N/A",
+    
+            "dob": "N/A",
+    
+            "nationality": "N/A",
+    
+            "sex": "N/A"
+    
+        },
+    
+        "custAddress": {
+    
+            "province": "",
+    
+            "district": "",
+    
+            "ward": "",
+    
+            "street": ""
+    
+        }
+    }
+  ]
 }
-
-response = requests.post(url, data=data)
-print(response.json())
 ```
 
-#### Example 3: cURL File Upload
+#### Error Responses
 
-```bash
-curl -X POST "http://localhost:8000/ocr-id-card/upload-image-flexible" \
-     -F "file=@path/to/image.jpg" \
-     -F "card_type=cccd" \
-     -F "card_side=front"
+**Error Code "1" - Image Quality/Processing Issues:**
+```json
+{
+  "errorCode": "1", 
+  "errorMessage": "Image quality is too low or processing failed",
+  "data": []
+}
 ```
 
-#### Example 4: cURL Base64
-
-```bash
-curl -X POST "http://localhost:8000/ocr-id-card/upload-image-flexible" \
-     -F "image_base64=data:image/jpeg;base64,/9j/4AAQSkZJRgABAQEAYABgAAD..." \
-     -F "card_type=cccd" \
-     -F "card_side=front" \
-     -F "file_name=test.jpg"
+**Error Code "2" - Card Detection Issues:**
+```json
+{
+  "errorCode": "2",
+  "errorMessage": "No card detected in image or invalid card type", 
+  "data": []
+}
 ```
+
+**Error Code "3" - Text Extraction Issues:**
+```json
+{
+  "errorCode": "3",
+  "errorMessage": "Text extraction failed",
+  "data": []
+}
+```
+
+## Supported Card Types
+
+- **CCCD (Căn cước công dân)**: Vietnamese National ID Card
+- **CC (Chứng minh nhân dân)**: Vietnamese Identity Card
+
+## Supported Card Sides
+
+- **Front**: Contains personal information
+- **Back**: Contains additional details and signatures
+
+## Image Requirements
+
+- **Format**: JPEG, PNG, or other common image formats
+- **Quality**: High resolution recommended for better OCR accuracy
+- **Orientation**: Any orientation (auto-corrected)
+- **Size**: Maximum file size depends on server configuration
+
+## Processing Pipeline
+
+1. **Image Validation**: Checks image quality and format
+2. **Card Detection**: Uses YOLOv11 OBB to detect and crop the card
+3. **Orientation Correction**: Automatically rotates the image to correct orientation
+4. **Image Unwarping**: Corrects perspective distortion
+5. **Text Detection**: Identifies text regions using YOLO models
+6. **Text Recognition**: Extracts text using VietOCR ONNX models
+7. **Field Mapping**: Maps extracted text to appropriate card fields
+
+## Performance
+
+- **Average Processing Time**: 1-3 seconds per image
+- **Concurrent Requests**: Supported with thread pool processing
+- **Memory Optimization**: GPU memory automatically cleared after processing
 
 ## Error Handling
 
-The API returns appropriate error messages for various scenarios:
+The API includes comprehensive error handling for:
+- Invalid image formats
+- Poor image quality
+- Card detection failures
+- Text extraction issues
+- Server processing errors
 
-- Image quality issues (blurry, dark, low contrast)
-- No card detected in the image
-- Wrong card type or side detected
-- Processing failures
+## Security Considerations
 
-Error response example:
+- Images are processed in memory and not permanently stored
+- Session IDs can be used for request tracking
+- Device information can be logged for audit purposes
 
-```json
-{
-  "status": "error",
-  "message": "Image is too blurry (blur score: 85.23)"
-}
-```
+## Rate Limiting
 
-## Performance Optimization
+Rate limiting may apply depending on server configuration. Contact your administrator for specific limits.
 
-The application includes several optimizations:
+## Support
 
-- Parallel processing of text extraction
-- LRU caching for expensive operations
-- Thread pool for concurrent processing
-- Optimized inference settings
-- GPU memory management with automatic cleanup
+For technical support or issues, please check the server logs or contact the development team.

@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  ocr-app:
+    image: ocr-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        PROXY_USER: ${PROXY_USER}
+        PROXY_PASS: ${PROXY_PASS}
+        PROXY_HOST: ${PROXY_HOST}
+        PROXY_PORT: ${PROXY_PORT}
+    volumes:
+      - ./model:/app/model
+      - ./src:/app/src
+    ports:
+      - "8000:8000"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      - PYTHONPATH=/app/src
+    container_name: ocr-container
