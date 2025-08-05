@@ -13,6 +13,7 @@ from models import (
     load_yolo_cardobb_model,
     load_paddle_imgorient_model,
     load_paddle_imgunwarp_model,
+    load_paddle_rec_model,
     load_yolo_textdetcls_model,
     load_vietocr_rec_onnx_model
 )
@@ -42,7 +43,10 @@ def get_services() -> Dict[str, Any]:
         # Load image unwarping model
         logger.info('Loading Paddle unwarping image model')
         paddle_imgunwarp_model = load_paddle_imgunwarp_model(settings.paddle_imgunwarp_configs.get('initial', {}))
-        
+        # Load image recognition model
+        logger.info('Loading Paddle recognition image model')
+        paddle_imgrec_model = load_paddle_rec_model(settings.paddle_imgrec_configs.get('initial', {}))
+
         # Load text detection models for each card type
         logger.info('Loading YOLO text region detection models')
         yolo_textdetcls_model = {}
@@ -59,6 +63,7 @@ def get_services() -> Dict[str, Any]:
             cardobb_model=yolo_cardobb_model,
             imgorient_model=paddle_imgorient_model,
             imgunwarp_model=paddle_imgunwarp_model,
+            mrzrec_model=paddle_imgrec_model,
             textdetcls_model=yolo_textdetcls_model,
             vietocr_onnx=vietocr_rec
         )

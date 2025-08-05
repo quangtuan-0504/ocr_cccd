@@ -89,6 +89,19 @@ class Settings(BaseSettings):
         }
     }
 
+    # PaddleOCR image recognition model
+    paddle_imgrec_configs: Dict[str, Dict[str, Any]] = {
+        "initial": {
+            "model_name": "en_PP-OCRv4_mobile_rec",
+            "model_dir": "model/en_PP-OCRv4_mobile_rec",
+            "device": "gpu" if torch.cuda.is_available() else "cpu",
+            "enable_hpi": False,
+        },
+        "inference": {
+            "batch_size": 1
+        }
+    }
+
     # Field class definitions for different card types
     FIELD_CLASS: Dict[str, Dict[int, str]] = {
         # Citizen card (cc) field classes

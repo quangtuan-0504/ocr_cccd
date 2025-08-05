@@ -2,7 +2,7 @@ import numpy as np
 from typing import Tuple, List, Optional, Dict, Any, Union
 from PIL import Image
 import cv2
-from paddleocr import DocImgOrientationClassification, TextImageUnwarping
+from paddleocr import DocImgOrientationClassification, TextImageUnwarping, TextRecognition
 from ultralytics import YOLO
 import time
 import concurrent.futures
@@ -34,6 +34,7 @@ class IdCardOCRService:
         cardobb_model: YOLO,
         imgorient_model: DocImgOrientationClassification,
         imgunwarp_model: TextImageUnwarping,
+        mrzrec_model: TextRecognition,
         textdetcls_model: Dict[str, YOLO],
         vietocr_onnx: Tuple
     ):
@@ -254,26 +255,44 @@ class IdCardOCRService:
         score = region_data['score']
         
         try:
-            # Convert image for OCR
-            cropped_img = cv2.cvtColor(region_data['text_region'], cv2.COLOR_BGR2RGB)
-            # Process input image - returns numpy array ready for ONNX inference
-            img = process_input(cropped_img, self.vietocr_cf['dataset']['image_height'], 
-                            self.vietocr_cf['dataset']['image_min_width'], self.vietocr_cf['dataset']['image_max_width'])  
-            
-            # Process with ONNX model - no need for additional np.array conversion
-            vietocr_text = translate_onnx(img, self.rec_model)[0].tolist()
-            vietocr_text = self.vocab.decode(vietocr_text)
-            
-            # Clean up variables to prevent memory leaks
-            del cropped_img, img
-            
-            logger.info(f"Extracted text for field {str_cls}: {vietocr_text}")
-            return {
-                'field_name': str_cls,
-                'text': vietocr_text,
-                'y_min': y_min,
-                'score': score
-            }
+            if str_cls != 'mrz':
+                # Convert image for OCR
+                cropped_img = cv2.cvtColor(region_data['text_region'], cv2.COLOR_BGR2RGB)
+                # Process input image - returns numpy array ready for ONNX inference
+                img = process_input(cropped_img, self.vietocr_cf['dataset']['image_height'], 
+                                self.vietocr_cf['dataset']['image_min_width'], self.vietocr_cf['dataset']['image_max_width'])  
+                
+                # Process with ONNX model - no need for additional np.array conversion
+                vietocr_text = translate_onnx(img, self.rec_model)[0].tolist()
+                vietocr_text = self.vocab.decode(vietocr_text)
+                
+                # Clean up variables to prevent memory leaks
+                del cropped_img, img
+                
+                logger.info(f"Extracted text for field {str_cls}: {vietocr_text}")
+                return {
+                    'field_name': str_cls,
+                    'text': vietocr_text,
+                    'y_min': y_min,
+                    'score': score
+                }
+            else:
+                # For MRZ, use PaddleOCR recognition model
+                output = self.mrzrec_model.predict(
+                    input=region_data['text_region'], 
+                    **settings.paddle_imgrec_configs['inference']
+                )
+                mrz_text = output[0]['text']
+
+                del output
+                logger.info(f"Extracted text for field {str_cls}: {mrz_text}")
+                
+                return {
+                    'field_name': str_cls,
+                    'text': mrz_text,
+                    'y_min': y_min,
+                    'score': score
+                }
         except Exception as e:
             logger.error(f"Error extracting text for field {str_cls}: {e}")
             return {

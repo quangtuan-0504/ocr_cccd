@@ -2,7 +2,7 @@
 Model loading functions for the OCR identification card application.
 """
 
-from paddleocr import DocImgOrientationClassification, TextImageUnwarping
+from paddleocr import DocImgOrientationClassification, TextImageUnwarping, TextRecognition
 from ultralytics import YOLO
 from configs import settings
 import onnxruntime
@@ -89,6 +89,28 @@ def load_paddle_imgunwarp_model(configs: Optional[Dict[str, Any]] = None) -> Tex
         logger.error(f"Failed to load PaddleOCR unwarping model: {str(e)}")
         raise ModelNotLoadedError(f"Failed to load PaddleOCR unwarping model: {str(e)}")
 
+def load_paddle_rec_model(configs: Optional[Dict[str, Any]] = None) -> TextRecognition:
+    """
+    Load PaddleOCR model for text image recognition.
+
+    Args:
+        configs: Configuration parameters for the PaddleOCR model.
+
+    Returns:
+        Loaded PaddleOCR recognition model instance.
+
+    Raises:
+        ModelNotLoadedError: If the PaddleOCR recognition model fails to load.
+    """
+    try:
+        configs = configs or {}
+        # logger.info(f"Loading PaddleOCR recognition model with config: {configs}")
+        model = TextRecognition(**configs)
+        logger.info("PaddleOCR recognition model loaded successfully")
+        return model
+    except Exception as e:
+        logger.error(f"Failed to load PaddleOCR recognition model: {str(e)}")
+        raise ModelNotLoadedError(f"Failed to load PaddleOCR recognition model: {str(e)}")
 
 def load_yolo_textdetcls_model(configs: Optional[Dict[str, Any]] = None) -> YOLO:
     """
