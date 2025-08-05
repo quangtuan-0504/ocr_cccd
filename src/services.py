@@ -51,6 +51,7 @@ class IdCardOCRService:
         self.imgorient_model = imgorient_model
         self.imgunwarp_model = imgunwarp_model
         self.textdetcls_model = textdetcls_model
+        self.mrzrec_model = mrzrec_model
         self.rec_model = vietocr_onnx[0]
         self.vocab = vietocr_onnx[1]
         self.vietocr_cf = vietocr_onnx[2]
@@ -286,7 +287,7 @@ class IdCardOCRService:
 
                 del output
                 logger.info(f"Extracted text for field {str_cls}: {mrz_text}")
-                
+
                 return {
                     'field_name': str_cls,
                     'text': mrz_text,
