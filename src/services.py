@@ -256,44 +256,27 @@ class IdCardOCRService:
         score = region_data['score']
         
         try:
-            if str_cls != 'mrz':
-                # Convert image for OCR
-                cropped_img = cv2.cvtColor(region_data['text_region'], cv2.COLOR_BGR2RGB)
-                # Process input image - returns numpy array ready for ONNX inference
-                img = process_input(cropped_img, self.vietocr_cf['dataset']['image_height'], 
-                                self.vietocr_cf['dataset']['image_min_width'], self.vietocr_cf['dataset']['image_max_width'])  
-                
-                # Process with ONNX model - no need for additional np.array conversion
-                vietocr_text = translate_onnx(img, self.rec_model)[0].tolist()
-                vietocr_text = self.vocab.decode(vietocr_text)
-                
-                # Clean up variables to prevent memory leaks
-                del cropped_img, img
-                
-                logger.info(f"Extracted text for field {str_cls}: {vietocr_text}")
-                return {
-                    'field_name': str_cls,
-                    'text': vietocr_text,
-                    'y_min': y_min,
-                    'score': score
-                }
-            else:
-                # For MRZ, use PaddleOCR recognition model
-                output = self.mrzrec_model.predict(
-                    input=region_data['text_region'], 
-                    **settings.paddle_imgrec_configs['inference']
-                )
-                mrz_text = output[0]['text']
-
-                del output
-                logger.info(f"Extracted text for field {str_cls}: {mrz_text}")
-
-                return {
-                    'field_name': str_cls,
-                    'text': mrz_text,
-                    'y_min': y_min,
-                    'score': score
-                }
+            
+            # Convert image for OCR
+            cropped_img = cv2.cvtColor(region_data['text_region'], cv2.COLOR_BGR2RGB)
+            # Process input image - returns numpy array ready for ONNX inference
+            img = process_input(cropped_img, self.vietocr_cf['dataset']['image_height'], 
+                            self.vietocr_cf['dataset']['image_min_width'], self.vietocr_cf['dataset']['image_max_width'])  
+            
+            # Process with ONNX model - no need for additional np.array conversion
+            vietocr_text = translate_onnx(img, self.rec_model)[0].tolist()
+            vietocr_text = self.vocab.decode(vietocr_text)
+            
+            # Clean up variables to prevent memory leaks
+            del cropped_img, img
+            
+            logger.info(f"Extracted text for field {str_cls}: {vietocr_text}")
+            return {
+                'field_name': str_cls,
+                'text': vietocr_text,
+                'y_min': y_min,
+                'score': score
+            }
         except Exception as e:
             logger.error(f"Error extracting text for field {str_cls}: {e}")
             return {
@@ -303,7 +286,46 @@ class IdCardOCRService:
                 'score': 0.0,
                 'error': str(e)
             }
+    def _extract_mrz(self, region_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract text from a single region using VietOCR.
+        
+        Args:
+            region_data: Dictionary containing field data and image region.
+            required_type: Type of card ("cccd" or "cc").
+            
+        Returns:
+            Dictionary with field name, extracted text and metadata.
+        """
+        str_cls = region_data['field']
+        y_min = region_data['y_min']
+        score = region_data['score']
+        
+        try:
+            # For MRZ, use PaddleOCR recognition model
+            output = self.mrzrec_model.predict(
+                input=region_data['text_region'], 
+                **settings.paddle_imgrec_configs['inference']
+            )
+            mrz_text = output[0]['text']
 
+            del output
+            logger.info(f"Extracted text for field {str_cls}: {mrz_text}")
+            
+            return {
+                'field_name': str_cls,
+                'text': mrz_text,
+                'y_min': y_min,
+                'score': score
+            }
+        except Exception as e:
+            logger.error(f"Error extracting text for field {str_cls}: {e}")
+            return {
+                'field_name': str_cls,
+                'text': '',
+                'y_min': y_min,
+                'score': 0.0,
+                'error': str(e)
+            }
     def _extract_text(self, fieldname_textregion_score: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         """Extract text from detected regions using VietOCR with parallel processing.
 
@@ -323,10 +345,17 @@ class IdCardOCRService:
             # Use parallel processing for text extraction
             futures = []
             for region_data in fieldname_textregion_score:
-                if region_data['field'] not in ['face,qr']:
+                if region_data['field'] not in ['face', 'qr', 'mrz']:
                     futures.append(
                         self.executor.submit(
                             self._extract_text_region, 
+                            region_data
+                        )
+                    )
+                elif region_data['field'] == 'mrz':
+                    futures.append(
+                        self.executor.submit(
+                            self._extract_mrz, 
                             region_data
                         )
                     )
