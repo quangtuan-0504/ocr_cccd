@@ -7,9 +7,9 @@ import os
 from typing import Dict, Any
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from logger import logger
-from configs import settings
-from models import (
+from src.logger import logger
+from src.configs import settings
+from src.models import (
     load_yolo_cardobb_model,
     load_paddle_imgorient_model,
     load_paddle_imgunwarp_model,

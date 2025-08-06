@@ -14,8 +14,9 @@ services:
     volumes:
       - ./model:/app/model
       - ./src:/app/src
+      - ./main.py:/app/main.py
     ports:
-      - "8000:8000"
+      - "8088:8088"
     deploy:
       resources:
         reservations:
@@ -24,5 +25,5 @@ services:
               count: all
               capabilities: [gpu]
     environment:
-      - PYTHONPATH=/app/src
+      - PYTHONPATH=/app
     container_name: ocr-container

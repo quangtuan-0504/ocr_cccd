@@ -4,7 +4,6 @@ Model loading functions for the OCR identification card application.
 
 from paddleocr import DocImgOrientationClassification, TextImageUnwarping, TextRecognition
 from ultralytics import YOLO
-from configs import settings
 import onnxruntime
 import yaml
 import os
@@ -13,8 +12,9 @@ import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 from vietocrOnnxModule.tool.config import Cfg
 from vietocrOnnxModule.model.vocab import Vocab
-from exceptions import ModelNotLoadedError
-from logger import logger
+from src.configs import settings
+from src.exceptions import ModelNotLoadedError
+from src.logger import logger
 import torch
 
 

@@ -49,13 +49,15 @@ ENV HTTPS_PROXY=""
 # COPY src/ ./src/
  
 # Thiết lập biến môi trường
-ENV PYTHONPATH=/app/src
+# ENV PYTHONPATH=/app/src
+ENV PYTHONPATH=/app
+
  
-# Mở port 8000 cho FastAPI
-EXPOSE 8000
+# Mở port 8088 cho FastAPI
+EXPOSE 8088
  
 # Lệnh chạy ứng dụng
-CMD ["python3", "src/main.py"]
+CMD ["python3", "main.py"]
  
 # main instruction
 # https://grok.com/chat/363ad30c-43fb-4128-bd51-a0d157d8256f
@@ -88,6 +90,7 @@ CMD ["python3", "src/main.py"]
 # docker run --gpus all \
 #   -v $(pwd)/model:/app/model \
 #   -v $(pwd)/src:/app/src \
-#   -p 8000:8000 \
+#   -v $(pwd)/main.py:/app/main.py \
+#   -p 8088:8088 \
 #   --name ocr-container \
 #   ocr-app

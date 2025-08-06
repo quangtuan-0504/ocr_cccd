@@ -266,33 +266,46 @@ def crop_and_rotate_image(image: np.ndarray, box: np.ndarray, expand_factor: flo
         return cropped
     except Exception as e:
         raise(f"Error in cropping/rotating image: {str(e)}")
-def parse_mrz(mrz: str) -> Dict[str, str]:
-    def format_date(date_str: str) -> str:
-        year = date_str[:2]
-        month = date_str[2:4]
-        day = date_str[4:6]
-        return f"{day}/{month}/20{year}"
+def format_date(date_str: str, code_gender_cen: str, date_type: str) -> str:
+    year = date_str[:2]
+    month = date_str[2:4]
+    day = date_str[4:6]
+    century = '20'
+    if date_type == "dob":
+        if code_gender_cen == '0' or code_gender_cen == '1':
+            century = '19'
+        elif code_gender_cen == '2'or code_gender_cen == '3':
+            century = '20'
+        elif code_gender_cen == '4'or code_gender_cen == '5':
+            century = '21'
+        elif code_gender_cen == '6'or code_gender_cen == '7':
+            century = '22'
+        elif code_gender_cen == '8'or code_gender_cen == '9':
+            century = '23'
+ 
+    return f"{day}/{month}/{century}{year}"
+def parse_mrz(mrz: List) -> Dict[str, str]:
     res = {
-        "id": mrz[15:27],
-        "name": ' '.join(mrz[55:].replace('<', ' ').split()), # .split() tự động xóa ' ' dư thừa luôn.
-        "doe": format_date(mrz[37:43]),
-        "dob": format_date(mrz[29:35]),
-        "nationality": mrz[2:5],
-        "sex": mrz[36]
+        "id": mrz[0][15:27],
+        "name": ' '.join(mrz[2][0:].replace('<', ' ').split()), # .split() tự động xóa ' ' dư thừa luôn.
+        "doe": format_date(mrz[1][0:6],mrz[0][18], "doe"),
+        "dob": format_date(mrz[1][0:6],mrz[0][18], "dob"),
+        "nationality": mrz[0][2:5],
+        "sex": mrz[1][7]
     }
     return res
 def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, require_side: str) -> Dict[str, Any]:
     """
     Map extracted text fields to card structure.
-    
+   
     Args:
         fieldname_text: Dictionary of field names and extracted text.
         require_type: Card type ('cccd' or 'cc').
         require_side: Card side ('front' or 'back').
-        
+       
     Returns:
         Dictionary with structured card information.
-        
+       
     Raises:
         ValueError: If the required card type or side is invalid.
     """
@@ -300,15 +313,15 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
     if not isinstance(fieldname_text, dict):
         logger.error(f"Invalid fieldname_text: {type(fieldname_text)}")
         raise ValueError("fieldname_text must be a dictionary")
-        
+       
     if require_type not in ['cccd', 'cc']:
         logger.error(f"Invalid card type: {require_type}")
         raise ValueError("require_type must be 'cccd' or 'cc'")
-        
+       
     if require_side not in ['front', 'back']:
         logger.error(f"Invalid card side: {require_side}")
         raise ValueError("require_side must be 'front' or 'back'")
-    
+   
     # print(fieldname_text)
    
     data = format_res.copy()
@@ -331,7 +344,7 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
             if field in field_mapping:
                 # Chọn tên trường tương ứng dựa trên require_type
                 target_field = field_mapping[field]
-                data[target_field] = value['text']
+                data[target_field] = value['text'] if isinstance(value['text'],str) else ''.join(value['text']) # mrz exception
                 score = round(float(value['score']),2)
                 data[target_field+'_prob'] = score
                 average_score+=score
@@ -369,3 +382,4 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
         logger.error(f"Error mapping text to card: {e}")
         # Return partial results if available, otherwise empty dict
         return data if 'street' in locals() else {}
+ 

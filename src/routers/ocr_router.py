@@ -5,7 +5,7 @@ import io
 from PIL import Image
 import time
 from logger import logger
-from load_resources import resources
+from src.load_resources import resources
 from schemas import OCRResponse
 
 
