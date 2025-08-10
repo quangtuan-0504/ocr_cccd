@@ -10,12 +10,10 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.logger import logger
 from src.configs import settings
 from src.models import (
-    load_yolo_cardobb_model,
-    load_paddle_imgorient_model,
-    load_paddle_imgunwarp_model,
+    load_yolo_4cornercarddet_model,
+    load_yolo_textregiondet_model,
     load_paddle_rec_model,
-    load_yolo_textdetcls_model,
-    load_vietocr_rec_onnx_model
+    load_vietocronnx_rec_model
 )
 from services import IdCardOCRService
 
@@ -32,40 +30,29 @@ def get_services() -> Dict[str, Any]:
     """
     resources = {}
     try:
-        # Load card detection model
-        logger.info('Loading OBB card detection model')
-        yolo_cardobb_model = load_yolo_cardobb_model(settings.yolo_cardobb_configs.get('initial', {}))
+        logger.info('Loading YOLO corner card detection model')
+        yolo_4cornercarddet_model = load_yolo_4cornercarddet_model(settings.yolo_4cornercarddet_configs.get('initial', {}))
         
-        # Load image orientation model
-        logger.info('Loading Paddle image orientation model')
-        paddle_imgorient_model = load_paddle_imgorient_model(settings.paddle_imgorient_configs.get('initial', {}))
         logger.setLevel(logging.INFO)
-        # Load image unwarping model
-        logger.info('Loading Paddle unwarping image model')
-        paddle_imgunwarp_model = load_paddle_imgunwarp_model(settings.paddle_imgunwarp_configs.get('initial', {}))
-        # Load image recognition model
-        logger.info('Loading Paddle recognition image model')
+    
+        logger.info('Loading YOLO text region detection models')
+        yolo_textregiondet_model = {}
+        for card_type, cfg in settings.yolo_textregiondet_configs.items():
+            logger.info(f'Loading text detection model for {card_type}')
+            yolo_textregiondet_model[card_type] = load_yolo_textregiondet_model(cfg.get('initial', {}))
+
+        logger.info('Loading paddle recognition model')
         paddle_imgrec_model = load_paddle_rec_model(settings.paddle_imgrec_configs.get('initial', {}))
 
-        # Load text detection models for each card type
-        logger.info('Loading YOLO text region detection models')
-        yolo_textdetcls_model = {}
-        for card_type, cfg in settings.yolo_textdetcls_configs.items():
-            logger.info(f'Loading text detection model for {card_type}')
-            yolo_textdetcls_model[card_type] = load_yolo_textdetcls_model(cfg.get('initial', {}))
-        
-        # Load text recognition model
         logger.info('Loading VietOCR recognition model')
-        vietocr_rec = load_vietocr_rec_onnx_model()
+        vietocr_rec_model = load_vietocronnx_rec_model()
 
         # Initialize OCR service with all models
         resources['ocr_service'] = IdCardOCRService(
-            cardobb_model=yolo_cardobb_model,
-            imgorient_model=paddle_imgorient_model,
-            imgunwarp_model=paddle_imgunwarp_model,
-            mrzrec_model=paddle_imgrec_model,
-            textdetcls_model=yolo_textdetcls_model,
-            vietocr_onnx=vietocr_rec
+            yolo_4cornercarddet_model=yolo_4cornercarddet_model,
+            yolo_textregiondet_model=yolo_textregiondet_model,
+            paddle_imgrec_model=paddle_imgrec_model,
+            vietocr_rec_model=vietocr_rec_model
         )
         logger.info("All services loaded successfully.")
     except Exception as e:

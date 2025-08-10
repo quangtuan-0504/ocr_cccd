@@ -18,9 +18,9 @@ from src.logger import logger
 import torch
 
 
-def load_yolo_cardobb_model(configs: Optional[Dict[str, Any]] = None) -> YOLO:
+def load_yolo_4cornercarddet_model(configs: Optional[Dict[str, Any]] = None) -> YOLO:
     """
-    Load YOLOv11 model for oriented bounding box detection.
+    Load YOLOv11 model for detection of 4 corner cards.
 
     Args:
         configs: Configuration parameters for the YOLO model.
@@ -33,62 +33,37 @@ def load_yolo_cardobb_model(configs: Optional[Dict[str, Any]] = None) -> YOLO:
     """
     try:
         configs = configs or {}
-        # logger.info(f"Loading YOLOv11 OBB model with config: {configs}")
+        # logger.info(f"Loading YOLOv11 detection 4 corner card model with config: {configs}")
         model = YOLO(**configs)
-        logger.info("YOLOv11 OBB model loaded successfully")
+        logger.info("YOLOv11 detection 4 corner card model loaded successfully")
         return model
     except Exception as e:
-        logger.error(f"Failed to load YOLOv11 OBB model: {str(e)}")
-        raise ModelNotLoadedError(f"Failed to load YOLOv11 OBB model: {str(e)}")
+        logger.error(f"Failed to load YOLOv11 detection 4 corner card model: {str(e)}")
+        raise ModelNotLoadedError(f"Failed to load YOLOv11 detection 4 corner card model: {str(e)}")
 
-
-def load_paddle_imgorient_model(configs: Optional[Dict[str, Any]] = None) -> DocImgOrientationClassification:
+def load_yolo_textregiondet_model(configs: Optional[Dict[str, Any]] = None) -> YOLO:
     """
-    Load PaddleOCR model for document image orientation classification.
+    Load YOLOv11 model for text region detection.
 
     Args:
-        configs: Configuration parameters for the PaddleOCR model.
+        configs: Configuration parameters for the YOLO model.
 
     Returns:
-        Loaded PaddleOCR orientation model instance.
+        Loaded YOLOv11 text region detection model instance.
 
     Raises:
-        ModelNotLoadedError: If the PaddleOCR orientation model fails to load.
+        ModelNotLoadedError: If the YOLOv11 text region detection model fails to load.
     """
     try:
         configs = configs or {}
-        # logger.info(f"Loading PaddleOCR orientation model with config: {configs}")
-        model = DocImgOrientationClassification(**configs)
-        logger.info("PaddleOCR orientation model loaded successfully")
+        # logger.info(f"Loading YOLOv11 text detection model with config: {configs}")
+        model = YOLO(**configs)
+        logger.info("YOLOv11 text detection model loaded successfully")
         return model
     except Exception as e:
-        logger.error(f"Failed to load PaddleOCR orientation model: {str(e)}")
-        raise ModelNotLoadedError(f"Failed to load PaddleOCR orientation model: {str(e)}")
-
-
-def load_paddle_imgunwarp_model(configs: Optional[Dict[str, Any]] = None) -> TextImageUnwarping:
-    """
-    Load PaddleOCR model for text image unwarping.
-
-    Args:
-        configs: Configuration parameters for the PaddleOCR model.
-
-    Returns:
-        Loaded PaddleOCR unwarping model instance.
-
-    Raises:
-        ModelNotLoadedError: If the PaddleOCR unwarping model fails to load.
-    """
-    try:
-        configs = configs or {}
-        # logger.info(f"Loading PaddleOCR unwarping model with config: {configs}")
-        model = TextImageUnwarping(**configs)
-        logger.info("PaddleOCR unwarping model loaded successfully")
-        return model
-    except Exception as e:
-        logger.error(f"Failed to load PaddleOCR unwarping model: {str(e)}")
-        raise ModelNotLoadedError(f"Failed to load PaddleOCR unwarping model: {str(e)}")
-
+        logger.error(f"Failed to load YOLOv11 text detection model: {str(e)}")
+        raise ModelNotLoadedError(f"Failed to load YOLOv11 text detection model: {str(e)}")
+    
 def load_paddle_rec_model(configs: Optional[Dict[str, Any]] = None) -> TextRecognition:
     """
     Load PaddleOCR model for text image recognition.
@@ -111,32 +86,8 @@ def load_paddle_rec_model(configs: Optional[Dict[str, Any]] = None) -> TextRecog
     except Exception as e:
         logger.error(f"Failed to load PaddleOCR recognition model: {str(e)}")
         raise ModelNotLoadedError(f"Failed to load PaddleOCR recognition model: {str(e)}")
-
-def load_yolo_textdetcls_model(configs: Optional[Dict[str, Any]] = None) -> YOLO:
-    """
-    Load YOLOv11 model for text detection and classification.
-
-    Args:
-        configs: Configuration parameters for the YOLO model.
-
-    Returns:
-        Loaded YOLOv11 text detection and classification model instance.
-
-    Raises:
-        ModelNotLoadedError: If the YOLOv11 text detection model fails to load.
-    """
-    try:
-        configs = configs or {}
-        # logger.info(f"Loading YOLOv11 text detection model with config: {configs}")
-        model = YOLO(**configs)
-        logger.info("YOLOv11 text detection model loaded successfully")
-        return model
-    except Exception as e:
-        logger.error(f"Failed to load YOLOv11 text detection model: {str(e)}")
-        raise ModelNotLoadedError(f"Failed to load YOLOv11 text detection model: {str(e)}")
-
     
-def load_vietocr_rec_onnx_model() -> Tuple:
+def load_vietocronnx_rec_model() -> Tuple:
     """
     Load VietOCR model for text recognition.
 

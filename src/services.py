@@ -2,7 +2,7 @@ import numpy as np
 from typing import Tuple, List, Optional, Dict, Any, Union
 from PIL import Image
 import cv2
-from paddleocr import DocImgOrientationClassification, TextImageUnwarping, TextRecognition
+from paddleocr import TextRecognition
 from ultralytics import YOLO
 import time
 import concurrent.futures
@@ -13,8 +13,7 @@ from vietocrOnnxModule.tool.translate import translate_onnx, process_input
 from configs import settings
 from utils import (
     validate_image_quality,
-    validate_bounding_box,
-    crop_and_rotate_image,
+    validate_and_crop_card,
     map_text2card,
     correct_image_orientation
 )
@@ -31,31 +30,26 @@ class IdCardOCRService:
     
     def __init__(
         self,
-        cardobb_model: YOLO,
-        imgorient_model: DocImgOrientationClassification,
-        imgunwarp_model: TextImageUnwarping,
-        mrzrec_model: TextRecognition,
-        textdetcls_model: Dict[str, YOLO],
-        vietocr_onnx: Tuple
+        yolo_4cornercarddet_model: YOLO,
+        yolo_textregiondet_model: Dict[str, YOLO],
+        paddle_imgrec_model: TextRecognition,
+        vietocr_rec_model: Tuple
     ):
         """Initialize the ID card OCR service.
 
         Args:
-            cardobb_model: YOLOv11 OBB model for card detection and cropping.
-            imgorient_model: Model for image orientation classification.
-            imgunwarp_model: Model for text image unwarping.
-            textdetcls_model: Dictionary of YOLO models for text detection and classification.
-            rec_model: VietOCR model for text recognition.
+            yolo_4cornercarddet_model: YOLOv11 for detection corner and card.
+            yolo_textregiondet_model: Dictionary of YOLO models for text region detection.
+            paddle_imgrec_model: PaddleOCR model for text recognition.
+            vietocr_rec_model: VietOCR model for text recognition.
         """
-        self.cardobb_model = cardobb_model
-        self.imgorient_model = imgorient_model
-        self.imgunwarp_model = imgunwarp_model
-        self.textdetcls_model = textdetcls_model
-        self.mrzrec_model = mrzrec_model
-        self.rec_model = vietocr_onnx[0]
-        self.vocab = vietocr_onnx[1]
-        self.vietocr_cf = vietocr_onnx[2]
-        
+        self.cornercarddet_model = yolo_4cornercarddet_model
+        self.textregiondet_model = yolo_textregiondet_model
+        self.mrzrec_model = paddle_imgrec_model
+        self.rec_model = vietocr_rec_model[0]
+        self.vocab = vietocr_rec_model[1]
+        self.vietocr_cf = vietocr_rec_model[2]
+
         # Initialize thread pool for parallel processing
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
     def _predict_card(self, image: Image.Image) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
@@ -72,126 +66,55 @@ class IdCardOCRService:
             image_np = np.array(image)
             
             # Use batched inference with optimized settings
-            inference_config = settings.yolo_cardobb_configs["inference"].copy()
-            inference_config["verbose"] = False  # Reduce logging overhead
+            inference_config = settings.yolo_4cornercarddet_configs["inference"]
             
-            # Run YOLOv11 inference with no_grad to save memory
-            with torch.no_grad():
-                results = self.cardobb_model.predict(image, **inference_config)
+            # Run YOLOv11 inference with no_grad to save memory ( ultralytics automatically handles this)
+            results = self.cornercarddet_model.predict(image, **inference_config)
 
-            if not results or not results[0].obb:
-                # Clean up before returning
-                del image_np, results
-                return None, {"error": "No card detected in image"}
-
-            obb = results[0].obb
-            # Move tensors to CPU immediately and convert to numpy
-            boxes = obb.xywhr.cpu().numpy()
-            scores = obb.conf.cpu().numpy()
-            classes = obb.cls.cpu().numpy().astype(int)
-
-            # Find the detection with highest confidence
-            max_conf_idx = scores.argmax()
-            best_box = boxes[max_conf_idx]
-            best_class = classes[max_conf_idx]
-            best_score = scores[max_conf_idx]
-
-            img_height, img_width = image_np.shape[:2]
-            w_ratio, h_ratio = validate_bounding_box(bbox=best_box, image_size=(img_width, img_height))
-            cropped_image = crop_and_rotate_image(image_np, best_box)
-
-            # Clean up tensors and variables immediately
-            del obb, boxes, scores, classes
-            del image_np, results
-
-            logger.info(f"Detected card class: {self.CLASS_CARD_NAMES[best_class]} with confidence {best_score:.3f}")
-            return cropped_image, {
-                "class": self.CLASS_CARD_NAMES[best_class],
-                "confidence": float(best_score),
-                "wh_ratio": (w_ratio,h_ratio)
-            }
+            for result in results: # only one loop for single image
+                boxes = result.boxes
+                xywh = boxes.xywh.cpu().numpy()
+                conf = boxes.conf.cpu().numpy()
+                cls = boxes.cls.cpu().numpy().astype(int)
+                cropped_image, card_type_name, card_type_conf = validate_and_crop_card(xywh, conf, cls, image_np)
+                # Clean up tensors and variables immediately
+                del image_np, results, boxes, xywh, conf, cls
+                return cropped_image, {
+                    "class": card_type_name,
+                    "confidence": float(card_type_conf)
+                }
 
         except Exception as e:
             logger.error(f"Error predicting card: {str(e)}")
             
             return None, {"error": f"Card prediction failed: {str(e)}"}
 
-    def _rotate_card(self, cropped_image: np.ndarray) -> np.ndarray:
-        """Rotate the cropped image based on predicted orientation.
+    def _detect_textregion(self, cropped_image: np.ndarray, required_type: str) -> List[Dict[str, Any]]:
+        """Detect and classify text regions in the cropped image.
 
         Args:
-            cropped_image: Input image as a numpy array.
-
-        Returns:
-            Rotated image as a numpy array.
-        """
-        # Calculate hash of input for caching
-        output = self.imgorient_model.predict(
-            input=cropped_image, 
-            **settings.paddle_imgorient_configs['inference']
-        )
-        orientation = output[0]['label_names'][0]
-        logger.info(f"Predicted orientation: {orientation}")
-        del output
-
-        if orientation == "0":
-            return cropped_image
-        elif orientation == "180":
-            return cv2.rotate(cropped_image, cv2.ROTATE_180)
-        elif orientation == "90":
-            return cv2.rotate(cropped_image, cv2.ROTATE_90_COUNTERCLOCKWISE)
-        elif orientation == "270":
-            return cv2.rotate(cropped_image, cv2.ROTATE_90_CLOCKWISE)
-        else:
-            logger.warning(f"Unknown orientation: {orientation}")
-            return cropped_image
-    
-    def _unwarp_card(self, rotated_image: np.ndarray) -> np.ndarray:
-        """Unwarp the rotated image to correct text distortion.
-
-        Args:
-            rotated_image: Rotated image as a numpy array.
-
-        Returns:
-            Unwarped image as a numpy array.
-        """
-        output = self.imgunwarp_model.predict(
-            input=rotated_image, 
-            **settings.paddle_imgunwarp_configs['inference']
-        )
-        unwarped_img = output[0]['doctr_img']
-        logger.info(f"Unwarped image shape: {unwarped_img.shape}")
-        del output
-        return unwarped_img
-
-    def _detect_cls_text(self, rotated_unwarped_img: np.ndarray, required_type: str) -> List[Dict[str, Any]]:
-        """Detect and classify text regions in the unwarped image.
-
-        Args:
-            rotated_unwarped_img: Unwarped image as a numpy array.
+            cropped_image: Cropped image as a numpy array.
             required_type: Type of card ("cccd" or "cc").
 
         Returns:
             List of dictionaries containing field, text region, score, and y_min.
         """
         # Use optimized inference settings
-        inference_config = settings.yolo_textdetcls_configs[required_type]['inference'].copy()
-        inference_config["verbose"] = False
-        
-        if inference_config["save"]:
-            img = Image.fromarray(rotated_unwarped_img)
+        inference_config = settings.yolo_textregiondet_configs[required_type]['inference']
+
+        if inference_config["save"]:  # must convert to PIL if you want to save
+            img = Image.fromarray(cropped_image)
         else:
-            img = rotated_unwarped_img
+            img = cropped_image
         
         
         fieldname_textregion_score = []
         
         try:
             # Run YOLOv11 inference with no_grad to save memory
-            with torch.no_grad():
-                results = self.textdetcls_model[required_type].predict(
-                    source=img, **inference_config
-                )
+            results = self.textregiondet_model[required_type].predict(
+                source=img, **inference_config
+            )
 
             for result in results:
                 boxes = result.boxes
@@ -212,15 +135,15 @@ class IdCardOCRService:
                     # Ensure coordinates are within bounds
                     x_min = max(0, x_min)
                     y_min = max(0, y_min)
-                    x_max = min(rotated_unwarped_img.shape[1], x_max)
-                    y_max = min(rotated_unwarped_img.shape[0], y_max)
+                    x_max = min(cropped_image.shape[1], x_max)
+                    y_max = min(cropped_image.shape[0], y_max)
                     
                     # Skip invalid regions
                     if x_min >= x_max or y_min >= y_max:
                         logger.warning(f"Skipping invalid text region: {x_min},{y_min},{x_max},{y_max}")
                         continue
                         
-                    cropped_img = rotated_unwarped_img[y_min:y_max, x_min:x_max]
+                    cropped_img = cropped_image[y_min:y_max, x_min:x_max]
                     str_cls = self.CLASS_FIELD_NAME[required_type][classes[j]]
                     
                     fieldname_textregion_score.append({
@@ -237,8 +160,7 @@ class IdCardOCRService:
             logger.error(f"Error in text detection: {str(e)}")
         finally:
             # Clean up all remaining tensors and variables
-            del img, rotated_unwarped_img, results
-            
+            del img, cropped_image, results
         return fieldname_textregion_score
 
     def _extract_text_region(self, region_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -426,32 +348,22 @@ class IdCardOCRService:
                 }
 
             # Validate card type and side
-            detected_class = detection_info["class"]
-            if "other_card" in detected_class:
-                return {
-                    "errorCode": "2",
-                    "errorMessage": "Detected card is not a valid ID card.",
-                    "data": []
-                }
+            # detected_class = detection_info["class"]
+            # if "other_card" in detected_class:
+            #     return {
+            #         "errorCode": "2",
+            #         "errorMessage": "Detected card is not a valid ID card.",
+            #         "data": []
+            #     }
 
-            # Process image: rotate, unwarp, detect text, and extract
-            start_time = time.time()
-            rotated_img = self._rotate_card(cropped_image)
             
-            w_ratio = detection_info['wh_ratio'][0]
-            h_ratio = detection_info['wh_ratio'][1]
-            if w_ratio < 0.9 and h_ratio < 0.9:
-                unwarped_img = self._unwarp_card(rotated_img)
-            else:
-                unwarped_img = rotated_img
-            logger.info(f'Time for rotate and unwarp: {time.time() - start_time:.3f}s')
-            
+            detected_class = detection_info["class"]
             card_type, card_side = detected_class.split('_')
             # Detect text regions
             start_time = time.time()
-            regions = self._detect_cls_text(
-                rotated_unwarped_img=unwarped_img,
-                required_type = card_type
+            regions = self._detect_textregion(
+                cropped_image=cropped_image,
+                required_type=card_type
             )
             logger.info(f'Time for text region detection: {time.time() - start_time:.3f}s')
 

@@ -21,85 +21,26 @@ class Settings(BaseSettings):
 
     # Card type class names
     CLASS_NAMES: Dict[int, str] = {
-        0: "cccd_front",
-        1: "cccd_back",
-        2: "cc_front",
-        3: "cc_back",
-        4: "other_card"
-    }
+        # 0: 'top_left',
+        # 1: 'top_right',
+        # 2: 'bottom_right',
+        # 3: 'bottom_left',
+        # 4: 'cc_front',
+        # 5: 'cc_back',
+        # 6: "cccd_front",
+        # 7: "cccd_back",
+        # 8: "other_card"
 
-    # YOLOv11 OBB model for card detection
-    YOLO_MODEL_PATH: str = "model/det_card/best.pt"
-    YOLO_CONF_THRESHOLD_OBB: float = 0.85
-    YOLO_CONF_THRESHOLD_DET: float = 0.5
-
-    
-    yolo_cardobb_configs: Dict[str, Dict[str, Any]] = {
-        "initial": {
-            "model": YOLO_MODEL_PATH,
-            "task": "obb"
-        },
-        "inference": {
-            "conf": YOLO_CONF_THRESHOLD_OBB,
-            "iou": 0.3,
-            "imgsz": (640, 640),
-            "device": "cuda" if torch.cuda.is_available() else "cpu",
-            "rect": True,
-            "half": False,
-            "batch": 1,
-            "max_det": 10,
-            "vid_stride": 1,
-            "stream_buffer": False,
-            "visualize": False,
-            "augment": False,
-            "agnostic_nms": False,
-            "classes": None,
-            "retina_masks": False,
-            "embed": None,
-            "project": None,
-            "name": None,
-            "stream": False,
-            "verbose": False,
-        }
-    }
-
-    # PaddleOCR image orientation model
-    paddle_imgorient_configs: Dict[str, Dict[str, Any]] = {
-        "initial": {
-            "model_name": "PP-LCNet_x1_0_doc_ori",
-            "model_dir": "model/PP-LCNet_x1_0_doc_ori",
-            "device": "gpu" if torch.cuda.is_available() else "cpu",
-            "enable_hpi": False,
-        },
-        "inference": {
-            "batch_size": 1
-        }
-    }
-
-    # PaddleOCR image unwarping model
-    paddle_imgunwarp_configs: Dict[str, Dict[str, Any]] = {
-        "initial": {
-            "model_name": "UVDoc",
-            "model_dir": "model/UVDoc",
-            "device": "gpu" if torch.cuda.is_available() else "cpu",
-            "enable_hpi": False,
-        },
-        "inference": {
-            "batch_size": 1
-        }
-    }
-
-    # PaddleOCR image recognition model
-    paddle_imgrec_configs: Dict[str, Dict[str, Any]] = {
-        "initial": {
-            "model_name": "en_PP-OCRv4_mobile_rec",
-            "model_dir": "model/en_PP-OCRv4_mobile_rec",
-            "device": "gpu" if torch.cuda.is_available() else "cpu",
-            "enable_hpi": False,
-        },
-        "inference": {
-            "batch_size": 1
-        }
+        # toy model class names
+        0: 'bottom_left',
+        1: 'bottom_right',
+        2: 'cc_back',
+        3: 'cc_front',
+        4: 'top_left',
+        5: 'top_right',
+        6: "cccd_front",
+        7: "cccd_back",
+        8: "other_card"
     }
 
     # Field class definitions for different card types
@@ -136,17 +77,56 @@ class Settings(BaseSettings):
             12: 'mrz'
         }
     }
+    
+    YOLO_DET_4CORNERCARD_MODEL_PATH: str = "model/det_card/best.pt"
+    YOLO_DET_TEXTCC_MODEL_PATH: str = "model/detcls_text_region/best.pt"
+    YOLO_DET_TEXTCCCD_MODEL_PATH: str = "model/detcls_text_region/best.pt"
 
-    # YOLO text detection and classification models
-    yolo_textdetcls_configs: Dict[str, Dict[str, Any]] = {
+    YOLO_CONF_THRESHOLD_DET_CORNERCARD: float = 0.35
+    YOLO_CONF_THRESHOLD_DET_TEXT: float = 0.5
+
+    PADDLE_REC_TEXTREGION_MODEL_PATH: str = "model/en_PP-OCRv4_mobile_rec"
+    VIETOCR_REC_TEXTREGION_MODEL_PATH: str = "model/vietocr/"
+    # YOLOv11 detection 4 corner card model for card detection
+    yolo_4cornercarddet_configs: Dict[str, Dict[str, Any]] = {
+        "initial": {
+            "model": YOLO_DET_4CORNERCARD_MODEL_PATH,
+            "task": "obb"
+        },
+        "inference": {
+            "conf": YOLO_CONF_THRESHOLD_DET_CORNERCARD,
+            "iou": 0.3,
+            "imgsz": (640, 640),
+            "device": "cuda" if torch.cuda.is_available() else "cpu",
+            "rect": True,
+            "half": False,
+            "batch": 1,
+            "max_det": 10,
+            "vid_stride": 1,
+            "stream_buffer": False,
+            "visualize": False,
+            "augment": False,
+            "agnostic_nms": False,
+            "classes": None,
+            "retina_masks": False,
+            "embed": None,
+            "project": None,
+            "name": None,
+            "stream": False,
+            "verbose": False,
+        }
+    }
+
+    # YOLO text region detection models
+    yolo_textregiondet_configs: Dict[str, Dict[str, Any]] = {
         # Citizen card (cc) text detection model
         "cc": {
             "initial": {
-                "model": "model/detcls_text_region/best.pt",
+                "model": YOLO_DET_TEXTCC_MODEL_PATH,
                 "task": "detect"
             },
             "inference": {
-                "conf": YOLO_CONF_THRESHOLD_DET,
+                "conf": YOLO_CONF_THRESHOLD_DET_TEXT,
                 "iou": 0.3,
                 "imgsz": (640, 640),
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
@@ -173,11 +153,11 @@ class Settings(BaseSettings):
         # Citizen ID card (cccd) text detection model
         "cccd": {
             "initial": {
-                "model": "model/detcls_text_region/best.pt",
+                "model": YOLO_DET_TEXTCCCD_MODEL_PATH,
                 "task": "detect"
             },
             "inference": {
-                "conf": YOLO_CONF_THRESHOLD_DET,
+                "conf": YOLO_CONF_THRESHOLD_DET_TEXT,
                 "iou": 0.3,
                 "imgsz": (640, 640),
                 "device": "cuda" if torch.cuda.is_available() else "cpu",
@@ -201,12 +181,23 @@ class Settings(BaseSettings):
             }
         }
     }
-
+    # PaddleOCR image recognition model
+    paddle_imgrec_configs: Dict[str, Dict[str, Any]] = {
+        "initial": {
+            "model_name": "en_PP-OCRv4_mobile_rec",
+            "model_dir": PADDLE_REC_TEXTREGION_MODEL_PATH,
+            "device": "gpu" if torch.cuda.is_available() else "cpu",
+            "enable_hpi": False,
+        },
+        "inference": {
+            "batch_size": 1
+        }
+    }
     # VietOCR configuration
     vietocr_configs: Dict[str, Union[str, Dict[str, Any]]] = {
-        'cnn_onnx_path': 'model/vietocr/cnn.onnx',
-        'encoder_onnx_path': 'model/vietocr/encoder.onnx',
-        'decoder_onnx_path': 'model/vietocr/decoder.onnx',
+        'cnn_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/cnn.onnx',
+        'encoder_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/encoder.onnx',
+        'decoder_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/decoder.onnx',
         'onnx_execution_options': {
             # 'enable_cuda': torch.cuda.is_available()
             'enable_cuda': False

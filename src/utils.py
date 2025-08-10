@@ -82,6 +82,8 @@ def validate_image_quality(image: Image.Image) -> None:
     except Exception as e:
         logger.error(f"Error during image quality validation: {e}")
         raise BadCaptureError(f"Failed to validate image quality: {e}")
+    finally:
+        del image_np  # Clean up numpy array to free memory
     
 def correct_image_orientation(image: Image.Image) -> Image.Image:
     """
@@ -145,127 +147,180 @@ def correct_image_orientation(image: Image.Image) -> Image.Image:
             return image.convert('RGB')
         return image
 
-def validate_bounding_box(bbox: np.ndarray, image_size: Tuple[int, int]) -> None:
+def validate_and_crop_card(xywh: np.ndarray,
+                           conf: np.ndarray,
+                           cls: np.ndarray,
+                           image: np.ndarray,
+                           expand: float = 1.1):
     """
-    Validate the bounding box of a detected card.
-    
-    Args:
-        bbox: Bounding box array [x, y, width, height, rotation].
-        image_size: Tuple of (width, height) of the original image.
-        
-    Raises:
-        BadBoxError: If the bounding box is invalid (too small, too large, or wrong aspect ratio).
-        ValueError: If the bbox or image_size parameters are invalid.
-    """
-    if bbox is None or len(bbox) != 5:
-        logger.error(f"Invalid bounding box: {bbox}")
-        raise ValueError("Bounding box must be a numpy array with 5 elements [x, y, width, height, rotation]")
-        
-    if len(image_size) != 2 or any(s <= 0 for s in image_size):
-        logger.error(f"Invalid image size: {image_size}")
-        raise ValueError("Image size must be a tuple of (width, height) with positive values")
-    
-    try:
-        # Calculate areas
-        img_width, img_height = image_size
-        img_area = img_width * img_height
-        
-        x, y, box_width, box_height, rotate = bbox
-        
-        # Check for negative or zero dimensions
-        if box_width <= 0 or box_height <= 0:
-            raise BadBoxError(f"Invalid box dimensions: width={box_width}, height={box_height}")
-        
-        bbox_area = box_width * box_height
-        area_ratio = bbox_area / img_area
-        
-        # Log the validation parameters
-        logger.info(f"Box validation - area_ratio: {area_ratio:.3f}, box: {bbox}")
-        
-        # Check area ratio
-        if area_ratio < settings.MIN_AREA_RATIO:
-            raise BadBoxError(f"Card area is too small (taken from too far): {area_ratio:.3f} < {settings.MIN_AREA_RATIO}")
-        
-        # if area_ratio > settings.MAX_AREA_RATIO:
-        #      raise BadBoxError(f"Card area is too large (taken from too close): {area_ratio:.3f} > {settings.MAX_AREA_RATIO}")
-        
-        
-        # Calculate aspect ratio
-        aspect_ratio = max(box_width, box_height) / min(box_width, box_height)
-        
-        # Check aspect ratio
-        if aspect_ratio < settings.ASPECT_RATIO_MIN or aspect_ratio > settings.ASPECT_RATIO_MAX:
-            raise BadBoxError(f"Card aspect ratio is invalid (not taken from front): {aspect_ratio:.3f} not in [{settings.ASPECT_RATIO_MIN}, {settings.ASPECT_RATIO_MAX}]")
-        # Compute width, height ratio
-        w_ratio = box_width/img_width
-        h_ratio = box_height/img_height
-        return w_ratio, h_ratio
-
-    except BadBoxError:
-        # Re-raise our custom exceptions
-        raise
-    except Exception as e:
-        logger.error(f"Error validating bounding box: {e}")
-        raise BadBoxError(f"Failed to validate bounding box: {e}")
-
-def crop_and_rotate_image(image: np.ndarray, box: np.ndarray, expand_factor: float = 1.1):
-    """
-    Crop and rotate the image based on OBB box with customizable expansion.
+    Validate detections: ensure 4 required corners and 1 card type. Optionally expand
+    the corner geometry before perspective cropping.
 
     Args:
-        image: Input image as numpy array
-        box: OBB box [x_center, y_center, width, height, angle]
-        expand_factor: Factor to expand the bounding box size (default 1.0 for original size)
+        xywh: (N,4) boxes [x_center, y_center, width, height]
+        conf: (N,) confidences
+        cls:  (N,) class ids
+        image: source image array
+        expand: scale factor to radially push corner centers away from card center (>1 enlarges)
 
     Returns:
-        Cropped and rotated image as numpy array, or None if failed
+        (cropped_image, w_ratio, h_ratio, card_type) or None if card type == 'other_card'
 
-    Nới rộng box theo tỷ lệ chiều rộng/dài
+    Raises:
+        CardDetectionError, BadBoxError
     """
     try:
-        x_center, y_center, width, height, angle = box
-        angle = angle * 180 / np.pi  # Convert radians to degrees
-        # if width >= height:
-        #     long_side = width
-        #     short_side = height
-        # else:
-        #     long_side = height
-        #     short_side = width
+        if any(v is None for v in (xywh, conf, cls, image)): # kiểm tra xem có giá trị nào là None không
+            raise ValueError("Inputs cannot be None")
+        if len(xywh) == 0:
+            raise CardDetectionError("No detections found")
 
-        # h_img, w_img, _ = image.shape
-        # Apply expansion factor to width and height
-        expanded_width = width * expand_factor
-        expanded_height = height * expand_factor
-        # if w_img/h_img>=0.5:
-        #     expanded_width = expanded_width + expanded_width*0.2
+        corner_names = {'top_left', 'top_right', 'bottom_left', 'bottom_right'}
+        card_type_classes = {'cc_front', 'cc_back', 'cccd_front', 'cccd_back', 'other_card'}
 
-        # Get rotation matrix
-        M = cv2.getRotationMatrix2D((x_center, y_center), angle, 1.0)
+        # Keep highest confidence per relevant class
+        best: Dict[str, Dict[str, Any]] = {}
+        for i in range(len(xywh)):
+            name = settings.CLASS_NAMES.get(int(cls[i]))
+            if name is None:
+                continue
+            if name in corner_names or name in card_type_classes:
+                if name not in best or conf[i] > best[name]['conf']: # chưa có thì thêm, có rồi thì so sánh xem có cập nhật lại k
+                    best[name] = {
+                        'box': xywh[i],
+                        'conf': float(conf[i]),
+                        'name': name
+                    }
 
-        # Rotate the image
-        rotated = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
+        # Check if we have exactly 5 required detections (4 corners + 1 card type)
+        detected_corners = [name for name in corner_names if name in best]
+        detected_card_types = [name for name in card_type_classes if name in best]
+        
+        # Must have exactly 4 corners
+        if len(detected_corners) != 4:
+            missing_corners = [c for c in corner_names if c not in best]# kiểm tra 4 góc thằng nào k có trong best thì thêm vào missing_corners
+            if missing_corners:
+                raise CardDetectionError(f"Missing corner detections: {missing_corners}")
+            else:
+                raise CardDetectionError("Unexpected corner detection issue")
+        
+        # Must have at least 1 card type
+        if len(detected_card_types) == 0:
+            raise CardDetectionError("Missing card type detection")
 
-        # Calculate new coordinates with expanded dimensions
-        x1 = int(x_center - expanded_width / 2)
-        y1 = int(y_center - expanded_height / 2)
-        x2 = int(x_center + expanded_width / 2)
-        y2 = int(y_center + expanded_height / 2)
+        # Select card type (highest conf among detected card-type classes)
+        card_type_det = None
+        for name in card_type_classes:
+            if name in best:
+                if card_type_det is None or best[name]['conf'] > card_type_det['conf']:
+                    card_type_det = best[name]
+        
+        card_type_name = card_type_det['name']
+        if card_type_name == 'other_card':
+            raise CardDetectionError("Detected 'other_card' please sent another image.")
 
-        # Ensure coordinates are within image bounds
-        x1 = max(0, x1)
-        y1 = max(0, y1)
-        x2 = min(image.shape[1], x2)
-        y2 = min(image.shape[0], y2)
+        def center_point(b):
+            x_c, y_c, _, _ = b
+            return np.array([float(x_c), float(y_c)], dtype=np.float32)
 
-        cropped = rotated[y1:y2, x1:x2]
+        # Get corner center coordinates
+        corners_raw = {
+            'top_left': center_point(best['top_left']['box']),
+            'top_right': center_point(best['top_right']['box']),
+            'bottom_right': center_point(best['bottom_right']['box']),
+            'bottom_left': center_point(best['bottom_left']['box'])
+        }
 
-        # Check if cropped image is valid
-        if cropped.size == 0:
-            return None
+        # Calculate width and height based on corner centers
+        # Width = distance from top_left to top_right
+        width = float(np.linalg.norm(corners_raw['top_right'] - corners_raw['top_left'])) # tính tọa độ vector nối 2 điểm, xong tính độ dài của nó.
+        # Height = distance from top_left to bottom_left  
+        height = float(np.linalg.norm(corners_raw['bottom_left'] - corners_raw['top_left']))
 
-        return cropped
+        if width <= 0 or height <= 0:
+            raise BadBoxError("Non-positive dimension after computation")
+
+        # Validate aspect ratio
+        aspect_ratio = max(width, height) / max(1e-6, min(width, height))
+        if not (settings.ASPECT_RATIO_MIN <= aspect_ratio <= settings.ASPECT_RATIO_MAX):
+            raise BadBoxError(f"Aspect ratio invalid: {aspect_ratio:.3f} not in "
+                              f"[{settings.ASPECT_RATIO_MIN}, {settings.ASPECT_RATIO_MAX}]")
+
+        # Validate area ratio
+        img_h, img_w = image.shape[:2]
+        card_area = width * height
+        area_ratio = card_area / max(1, img_w * img_h)
+        if area_ratio < settings.MIN_AREA_RATIO:
+            raise BadBoxError(f"Card area too small: {area_ratio:.4f} < {settings.MIN_AREA_RATIO}")
+
+        # Apply expansion if needed
+        if expand != 1.0:
+            # Get image dimensions
+            img_h, img_w = image.shape[:2]
+            
+            # Calculate centroid of all corners
+            pts_array = np.vstack([
+                corners_raw['top_left'],
+                corners_raw['top_right'], 
+                corners_raw['bottom_right'],
+                corners_raw['bottom_left']
+            ])
+            centroid = pts_array.mean(axis=0)
+            
+            # Expand corners away from centroid
+            expanded_corners = {}
+            for corner_name in corners_raw:
+                expanded_corner = centroid + (corners_raw[corner_name] - centroid) * float(expand)
+                
+                # Clamp coordinates to image boundaries with small margin
+                margin = 5  # pixels
+                expanded_corner[0] = np.clip(expanded_corner[0], margin, img_w - margin)
+                expanded_corner[1] = np.clip(expanded_corner[1], margin, img_h - margin)
+                
+                expanded_corners[corner_name] = expanded_corner
+            
+            # Update corners_raw with clamped expanded corners
+            corners_raw = expanded_corners
+            
+            logger.debug(f"Applied expansion factor {expand} with image boundary constraints")
+        # Prepare source and destination points for perspective transform
+        src = np.array([
+            corners_raw['top_left'],
+            corners_raw['top_right'],
+            corners_raw['bottom_right'],
+            corners_raw['bottom_left']
+        ], dtype=np.float32)
+
+        # Destination rectangle (standard rectangle)
+        dst_w = max(1, int(round(width)))
+        dst_h = max(1, int(round(height)))
+        dst = np.array([
+            [0, 0],
+            [dst_w - 1, 0],
+            [dst_w - 1, dst_h - 1],
+            [0, dst_h - 1]
+        ], dtype=np.float32)
+
+        logger.debug(
+            f"Geometry (expand={expand}) width={width:.1f}, height={height:.1f}, "
+            f"aspect_ratio={aspect_ratio:.3f}, area_ratio={area_ratio:.4f}"
+        )
+
+        # Perspective transform
+        M = cv2.getPerspectiveTransform(src, dst)
+        cropped = cv2.warpPerspective(image, M, (dst_w, dst_h))
+
+        w_ratio = width / img_w
+        h_ratio = height / img_h
+        logger.info(f"Cropped card type={card_type_name}, expand={expand}, w_ratio={w_ratio:.3f}, h_ratio={h_ratio:.3f}")
+        return cropped, card_type_name, card_type_det['conf']
+
+    except (BadBoxError, CardDetectionError):
+        raise
     except Exception as e:
-        raise(f"Error in cropping/rotating image: {str(e)}")
+        logger.error(f"Unexpected error in validate_and_crop_card: {e}")
+        raise BadBoxError(f"Failed during card validation/cropping: {e}")
+
 def format_date(date_str: str, code_gender_cen: str, date_type: str) -> str:
     year = date_str[:2]
     month = date_str[2:4]
@@ -382,4 +437,3 @@ def map_text2card(fieldname_text: Dict[str, Dict[str, Any]], require_type: str, 
         logger.error(f"Error mapping text to card: {e}")
         # Return partial results if available, otherwise empty dict
         return data if 'street' in locals() else {}
- 
