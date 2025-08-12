@@ -3,7 +3,6 @@ from typing import Tuple, List, Optional, Dict, Any, Union
 from PIL import Image
 import cv2
 from paddleocr import TextRecognition
-from ultralytics import YOLO
 import time
 import concurrent.futures
 import sys
@@ -17,9 +16,12 @@ from utils import (
     map_text2card,
     correct_image_orientation
 )
+from yoloOnnxModule.prediction import yoloonnx_predict
+
 from logger import logger
 from exceptions import CardDetectionError, BadCaptureError
 import torch
+import onnxruntime
 
 class IdCardOCRService:
     """Service for processing ID card images using YOLOv11 OBB, PaddleOCR and VietOCR."""
@@ -30,8 +32,8 @@ class IdCardOCRService:
     
     def __init__(
         self,
-        yolo_4cornercarddet_model: YOLO,
-        yolo_textregiondet_model: Dict[str, YOLO],
+        yolo_4cornercarddet_model: onnxruntime.InferenceSession,
+        yolo_textregiondet_model: Dict[str, onnxruntime.InferenceSession],
         paddle_imgrec_model: TextRecognition,
         vietocr_rec_model: Tuple
     ):
@@ -68,21 +70,15 @@ class IdCardOCRService:
             # Use batched inference with optimized settings
             inference_config = settings.yolo_4cornercarddet_configs["inference"]
             
-            # Run YOLOv11 inference with no_grad to save memory ( ultralytics automatically handles this)
-            results = self.cornercarddet_model.predict(image, **inference_config)
-
-            for result in results: # only one loop for single image
-                boxes = result.boxes
-                xywh = boxes.xywh.cpu().numpy()
-                conf = boxes.conf.cpu().numpy()
-                cls = boxes.cls.cpu().numpy().astype(int)
-                cropped_image, card_type_name, card_type_conf = validate_and_crop_card(xywh, conf, cls, image_np)
-                # Clean up tensors and variables immediately
-                del image_np, results, boxes, xywh, conf, cls
-                return cropped_image, {
-                    "class": card_type_name,
-                    "confidence": float(card_type_conf)
-                }
+            # Run YOLOv11 inference
+            xywh, conf, cls = yoloonnx_predict(image_np, self.cornercarddet_model, inference_config)
+            cropped_image, card_type_name, card_type_conf = validate_and_crop_card(xywh, conf, cls, image_np)
+            # Clean up tensors and variables immediately
+            del image_np, xywh, conf, cls
+            return cropped_image, {
+                "class": card_type_name,
+                "confidence": float(card_type_conf)
+            }
 
         except Exception as e:
             logger.error(f"Error predicting card: {str(e)}")
@@ -101,60 +97,42 @@ class IdCardOCRService:
         """
         # Use optimized inference settings
         inference_config = settings.yolo_textregiondet_configs[required_type]['inference']
-
-        if inference_config["save"]:  # must convert to PIL if you want to save
-            img = Image.fromarray(cropped_image)
-        else:
-            img = cropped_image
-        
         
         fieldname_textregion_score = []
         
         try:
-            # Run YOLOv11 inference with no_grad to save memory
-            results = self.textregiondet_model[required_type].predict(
-                source=img, **inference_config
-            )
+            # Run YOLOv11 inference
+            boxes_xyxy, scores, classes = yoloonnx_predict(cropped_image, self.textregiondet_model[required_type], 'xyxy', inference_config)
 
-            for result in results:
-                boxes = result.boxes
-                if boxes is None or len(boxes) == 0:
+            detected_fields = [self.CLASS_FIELD_NAME[required_type][int(cls)] for cls in classes]
+            logger.info(f"Detected fields: {detected_fields}")
+
+            # Process all detected regions at once
+            for j, box in enumerate(boxes_xyxy):
+                x_min, y_min, x_max, y_max = map(int, box)
+                # Ensure coordinates are within bounds
+                x_min = max(0, x_min)
+                y_min = max(0, y_min)
+                x_max = min(cropped_image.shape[1], x_max)
+                y_max = min(cropped_image.shape[0], y_max)
+                
+                # Skip invalid regions
+                if x_min >= x_max or y_min >= y_max:
+                    logger.warning(f"Skipping invalid text region: {x_min},{y_min},{x_max},{y_max}")
                     continue
                     
-                # Move tensors to CPU immediately and convert to numpy
-                boxes_xyxy = boxes.xyxy.cpu().numpy()
-                scores = boxes.conf.cpu().numpy()
-                classes = boxes.cls.cpu().numpy().astype(int)
-
-                detected_fields = [self.CLASS_FIELD_NAME[required_type][int(cls)] for cls in classes]
-                logger.info(f"Detected fields: {detected_fields}")
-
-                # Process all detected regions at once
-                for j, box in enumerate(boxes_xyxy):
-                    x_min, y_min, x_max, y_max = map(int, box)
-                    # Ensure coordinates are within bounds
-                    x_min = max(0, x_min)
-                    y_min = max(0, y_min)
-                    x_max = min(cropped_image.shape[1], x_max)
-                    y_max = min(cropped_image.shape[0], y_max)
-                    
-                    # Skip invalid regions
-                    if x_min >= x_max or y_min >= y_max:
-                        logger.warning(f"Skipping invalid text region: {x_min},{y_min},{x_max},{y_max}")
-                        continue
-                        
-                    cropped_img = cropped_image[y_min:y_max, x_min:x_max]
-                    str_cls = self.CLASS_FIELD_NAME[required_type][classes[j]]
-                    
-                    fieldname_textregion_score.append({
-                        'field': str_cls,
-                        'text_region': cropped_img, # np.array
-                        'score': scores[j],
-                        'y_min': y_min
-                    })
+                cropped_img = cropped_image[y_min:y_max, x_min:x_max]
+                str_cls = self.CLASS_FIELD_NAME[required_type][classes[j]]
                 
-                # Clean up tensors for this result
-                del boxes, boxes_xyxy, scores, classes
+                fieldname_textregion_score.append({
+                    'field': str_cls,
+                    'text_region': cropped_img, # np.array
+                    'score': scores[j],
+                    'y_min': y_min
+                })
+            
+            # Clean up tensors for this result
+            del boxes_xyxy, scores, classes, cropped_image
 
         except Exception as e:
             logger.error(f"Error in text detection: {str(e)}")

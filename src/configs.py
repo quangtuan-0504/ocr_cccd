@@ -90,8 +90,7 @@ class Settings(BaseSettings):
     # YOLOv11 detection 4 corner card model for card detection
     yolo_4cornercarddet_configs: Dict[str, Dict[str, Any]] = {
         "initial": {
-            "model": YOLO_DET_4CORNERCARD_MODEL_PATH,
-            "task": "obb"
+            "path_or_bytes": YOLO_DET_4CORNERCARD_MODEL_PATH,
         },
         "inference": {
             "conf": YOLO_CONF_THRESHOLD_DET_CORNERCARD,
@@ -122,8 +121,7 @@ class Settings(BaseSettings):
         # Citizen card (cc) text detection model
         "cc": {
             "initial": {
-                "model": YOLO_DET_TEXTCC_MODEL_PATH,
-                "task": "detect"
+                "path_or_bytes": YOLO_DET_TEXTCC_MODEL_PATH,
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD_DET_TEXT,
@@ -153,8 +151,7 @@ class Settings(BaseSettings):
         # Citizen ID card (cccd) text detection model
         "cccd": {
             "initial": {
-                "model": YOLO_DET_TEXTCCCD_MODEL_PATH,
-                "task": "detect"
+                "path_or_bytes": YOLO_DET_TEXTCCCD_MODEL_PATH,
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD_DET_TEXT,

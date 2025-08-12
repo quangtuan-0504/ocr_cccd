@@ -10,8 +10,8 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.logger import logger
 from src.configs import settings
 from src.models import (
-    load_yolo_4cornercarddet_model,
-    load_yolo_textregiondet_model,
+    load_yoloonnx_4cornercarddet_model,
+    load_yoloonnx_textregiondet_model,
     load_paddle_rec_model,
     load_vietocronnx_rec_model
 )
@@ -31,7 +31,7 @@ def get_services() -> Dict[str, Any]:
     resources = {}
     try:
         logger.info('Loading YOLO corner card detection model')
-        yolo_4cornercarddet_model = load_yolo_4cornercarddet_model(settings.yolo_4cornercarddet_configs.get('initial', {}))
+        yolo_4cornercarddet_model = load_yoloonnx_4cornercarddet_model(settings.yolo_4cornercarddet_configs.get('initial', {}))
         
         logger.setLevel(logging.INFO)
     
@@ -39,7 +39,7 @@ def get_services() -> Dict[str, Any]:
         yolo_textregiondet_model = {}
         for card_type, cfg in settings.yolo_textregiondet_configs.items():
             logger.info(f'Loading text detection model for {card_type}')
-            yolo_textregiondet_model[card_type] = load_yolo_textregiondet_model(cfg.get('initial', {}))
+            yolo_textregiondet_model[card_type] = load_yoloonnx_textregiondet_model(cfg.get('initial', {}))
 
         logger.info('Loading paddle recognition model')
         paddle_imgrec_model = load_paddle_rec_model(settings.paddle_imgrec_configs.get('initial', {}))

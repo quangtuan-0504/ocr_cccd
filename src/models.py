@@ -2,8 +2,7 @@
 Model loading functions for the OCR identification card application.
 """
 
-from paddleocr import DocImgOrientationClassification, TextImageUnwarping, TextRecognition
-from ultralytics import YOLO
+from paddleocr import TextRecognition
 import onnxruntime
 import yaml
 import os
@@ -16,11 +15,12 @@ from src.configs import settings
 from src.exceptions import ModelNotLoadedError
 from src.logger import logger
 import torch
+# import pynvml
 
 
-def load_yolo_4cornercarddet_model(configs: Optional[Dict[str, Any]] = None) -> YOLO:
+def load_yoloonnx_4cornercarddet_model(configs: Optional[Dict[str, Any]] = None) -> onnxruntime.InferenceSession:
     """
-    Load YOLOv11 model for detection of 4 corner cards.
+    Load YOLOv11 onnx model for detection of 4 corner cards.
 
     Args:
         configs: Configuration parameters for the YOLO model.
@@ -34,16 +34,16 @@ def load_yolo_4cornercarddet_model(configs: Optional[Dict[str, Any]] = None) -> 
     try:
         configs = configs or {}
         # logger.info(f"Loading YOLOv11 detection 4 corner card model with config: {configs}")
-        model = YOLO(**configs)
+        model = onnxruntime.InferenceSession(**configs)
         logger.info("YOLOv11 detection 4 corner card model loaded successfully")
         return model
     except Exception as e:
         logger.error(f"Failed to load YOLOv11 detection 4 corner card model: {str(e)}")
         raise ModelNotLoadedError(f"Failed to load YOLOv11 detection 4 corner card model: {str(e)}")
 
-def load_yolo_textregiondet_model(configs: Optional[Dict[str, Any]] = None) -> YOLO:
+def load_yoloonnx_textregiondet_model(configs: Optional[Dict[str, Any]] = None) -> onnxruntime.InferenceSession:
     """
-    Load YOLOv11 model for text region detection.
+    Load YOLOv11 onnx model for text region detection.
 
     Args:
         configs: Configuration parameters for the YOLO model.
@@ -57,7 +57,7 @@ def load_yolo_textregiondet_model(configs: Optional[Dict[str, Any]] = None) -> Y
     try:
         configs = configs or {}
         # logger.info(f"Loading YOLOv11 text detection model with config: {configs}")
-        model = YOLO(**configs)
+        model = onnxruntime.InferenceSession(**configs)
         logger.info("YOLOv11 text detection model loaded successfully")
         return model
     except Exception as e:
@@ -98,7 +98,13 @@ def load_vietocronnx_rec_model() -> Tuple:
         RuntimeError: If the VietOCR model fails to load.
     """
     try:
-        # Check cuda availability
+        # # Check cuda availability
+        # try:
+        #     pynvml.nvmlInit()
+        #     cuda_check = pynvml.nvmlDeviceGetCount() > 0
+        #     pynvml.nvmlShutdown()
+        # except Exception:
+        #     cuda_check = False
         cuda_check = torch.cuda.is_available()
         # Enable cuda if available
         enable_cuda = settings.vietocr_configs.get('onnx_execution_options', {}).get('enable_cuda', False) and cuda_check
