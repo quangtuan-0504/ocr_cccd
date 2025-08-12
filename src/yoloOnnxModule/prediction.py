@@ -160,7 +160,7 @@ def yoloonnx_predict(image: np.ndarray, model: onnxruntime.InferenceSession, for
     cls = rescaled_results[:, 4].astype(int)
     xyxy = rescaled_results[:, :4]
     if format_box == 'xyxy':
-        del rescaled_results, xyxy, preprocessed_image
+        del rescaled_results, preprocessed_image
         return xyxy, conf, cls
     else:
         x1, y1, x2, y2 = xyxy[:, 0], xyxy[:, 1], xyxy[:, 2], xyxy[:, 3]

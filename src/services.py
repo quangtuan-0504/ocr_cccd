@@ -71,7 +71,7 @@ class IdCardOCRService:
             inference_config = settings.yolo_4cornercarddet_configs["inference"]
             
             # Run YOLOv11 inference
-            xywh, conf, cls = yoloonnx_predict(image_np, self.cornercarddet_model, inference_config)
+            xywh, conf, cls = yoloonnx_predict(image_np, self.cornercarddet_model,'xywh', inference_config)
             cropped_image, card_type_name, card_type_conf = validate_and_crop_card(xywh, conf, cls, image_np)
             # Clean up tensors and variables immediately
             del image_np, xywh, conf, cls
@@ -136,9 +136,7 @@ class IdCardOCRService:
 
         except Exception as e:
             logger.error(f"Error in text detection: {str(e)}")
-        finally:
-            # Clean up all remaining tensors and variables
-            del img, cropped_image, results
+        
         return fieldname_textregion_score
 
     def _extract_text_region(self, region_data: Dict[str, Any]) -> Dict[str, Any]:
