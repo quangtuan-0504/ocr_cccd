@@ -8,6 +8,7 @@ import concurrent.futures
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
+from yoloOnnxModule.prediction import yoloonnx_predict
 from vietocrOnnxModule.tool.translate import translate_onnx, process_input
 from configs import settings
 from utils import (
@@ -16,7 +17,7 @@ from utils import (
     map_text2card,
     correct_image_orientation
 )
-from yoloOnnxModule.prediction import yoloonnx_predict
+
 
 from logger import logger
 from exceptions import CardDetectionError, BadCaptureError

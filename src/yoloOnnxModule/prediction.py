@@ -15,7 +15,7 @@ def preprocess_img(image: np.ndarray, imgsz: Tuple[int, int]) -> np.ndarray:
         Preprocessed image as a NumPy array.
     """
     img = cv2.resize(image, imgsz)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    # img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img = img.transpose(2, 0, 1)
     img = img.reshape(1, 3, *imgsz)
     # Normalize pixel values to the range [0, 1]
