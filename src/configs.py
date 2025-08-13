@@ -1,24 +1,24 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Dict, List, Any, Union
 import torch
-
-
+ 
+ 
 class Settings(BaseSettings):
     """
     Configuration settings for the OCR identification card application.
     """
     # Configuration for .env file loading
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
-
+ 
     # Application settings
     app_name: str = "OCR identification card application"
-
+ 
     # Card validation thresholds
     MIN_AREA_RATIO: float = 0.1     # Minimum card area ratio relative to image
     MAX_AREA_RATIO: float = 0.95    # Maximum card area ratio relative to image
     ASPECT_RATIO_MIN: float = 1.0   # Minimum card aspect ratio (width/height)
     ASPECT_RATIO_MAX: float = 2.0   # Maximum card aspect ratio (width/height)
-
+ 
     # Card type class names
     CLASS_NAMES: Dict[int, str] = {
         # 0: 'top_left',
@@ -30,7 +30,7 @@ class Settings(BaseSettings):
         # 6: "cccd_front",
         # 7: "cccd_back",
         # 8: "other_card"
-
+ 
         # toy model class names
         0: 'bottom_left',
         1: 'bottom_right',
@@ -42,7 +42,7 @@ class Settings(BaseSettings):
         7: "cccd_back",
         8: "other_card"
     }
-
+ 
     # Field class definitions for different card types
     FIELD_CLASS: Dict[str, Dict[int, str]] = {
         # Citizen card (cc) field classes
@@ -77,103 +77,57 @@ class Settings(BaseSettings):
             12: 'mrz'
         }
     }
-    
-    YOLO_DET_4CORNERCARD_MODEL_PATH: str = "model/det_card/best.pt"
-    YOLO_DET_TEXTCC_MODEL_PATH: str = "model/detcls_text_region/best.pt"
-    YOLO_DET_TEXTCCCD_MODEL_PATH: str = "model/detcls_text_region/best.pt"
-
+   
+    YOLO_DET_4CORNERCARD_MODEL_PATH: str = "model/det_card/best.onnx"
+    YOLO_DET_TEXTCC_MODEL_PATH: str = "model/detcls_text_region/cc_best.onnx"
+    YOLO_DET_TEXTCCCD_MODEL_PATH: str = "model/detcls_text_region/cccd_best.onnx"
+ 
     YOLO_CONF_THRESHOLD_DET_CORNERCARD: float = 0.35
     YOLO_CONF_THRESHOLD_DET_TEXT: float = 0.5
-
+ 
     PADDLE_REC_TEXTREGION_MODEL_PATH: str = "model/en_PP-OCRv4_mobile_rec"
     VIETOCR_REC_TEXTREGION_MODEL_PATH: str = "model/vietocr/"
     # YOLOv11 detection 4 corner card model for card detection
     yolo_4cornercarddet_configs: Dict[str, Dict[str, Any]] = {
         "initial": {
             "path_or_bytes": YOLO_DET_4CORNERCARD_MODEL_PATH,
+            "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'] if torch.cuda.is_available() else ['CPUExecutionProvider']
         },
         "inference": {
             "conf": YOLO_CONF_THRESHOLD_DET_CORNERCARD,
             "iou": 0.3,
             "imgsz": (640, 640),
-            "device": "cuda" if torch.cuda.is_available() else "cpu",
-            "rect": True,
-            "half": False,
-            "batch": 1,
             "max_det": 10,
-            "vid_stride": 1,
-            "stream_buffer": False,
-            "visualize": False,
-            "augment": False,
-            "agnostic_nms": False,
-            "classes": None,
-            "retina_masks": False,
-            "embed": None,
-            "project": None,
-            "name": None,
-            "stream": False,
-            "verbose": False,
         }
     }
-
+ 
     # YOLO text region detection models
     yolo_textregiondet_configs: Dict[str, Dict[str, Any]] = {
         # Citizen card (cc) text detection model
         "cc": {
             "initial": {
                 "path_or_bytes": YOLO_DET_TEXTCC_MODEL_PATH,
+                "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'] if torch.cuda.is_available() else ['CPUExecutionProvider']
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD_DET_TEXT,
                 "iou": 0.3,
                 "imgsz": (640, 640),
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "rect": True,
-                "half": False,
-                "batch": 1,
                 "max_det": 10,
-                "vid_stride": 1,
-                "stream_buffer": False,
-                "visualize": False,
-                "augment": False,
-                "agnostic_nms": False,
-                "classes": None,
-                "retina_masks": False,
-                "embed": None,
-                "project": 'analysis_error',
-                "name": 'cc_det',
-                "stream": False,
-                "verbose": False,
-                "save": False # if you want to save results image, you must pass img input as pil image
-                # Image not contiguous. Apply np.ascontiguousarray(im) to Annotator input images."
+                "save": False
             }
         },
         # Citizen ID card (cccd) text detection model
         "cccd": {
             "initial": {
                 "path_or_bytes": YOLO_DET_TEXTCCCD_MODEL_PATH,
+                "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'] if torch.cuda.is_available() else ['CPUExecutionProvider']
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD_DET_TEXT,
                 "iou": 0.3,
                 "imgsz": (640, 640),
-                "device": "cuda" if torch.cuda.is_available() else "cpu",
-                "rect": True,
-                "half": False,
-                "batch": 1,
                 "max_det": 10,
-                "vid_stride": 1,
-                "stream_buffer": False,
-                "visualize": False,
-                "augment": False,
-                "agnostic_nms": False,
-                "classes": None,
-                "retina_masks": False,
-                "embed": None,
-                "project": 'analysis_error',
-                "name": 'cccd_det',
-                "stream": False,
-                "verbose": False,
                 "save": False
             }
         }
@@ -200,10 +154,10 @@ class Settings(BaseSettings):
             'enable_cuda': False
         }
     }
-
-
+ 
+ 
 # Create settings instance
 settings = Settings()
-
+ 
 if __name__ == "__main__":
     print(settings)

@@ -323,16 +323,6 @@ class IdCardOCRService:
                     "errorMessage":detection_info["error"],
                     "data": []
                 }
-
-            # Validate card type and side
-            # detected_class = detection_info["class"]
-            # if "other_card" in detected_class:
-            #     return {
-            #         "errorCode": "2",
-            #         "errorMessage": "Detected card is not a valid ID card.",
-            #         "data": []
-            #     }
-
             
             detected_class = detection_info["class"]
             card_type, card_side = detected_class.split('_')

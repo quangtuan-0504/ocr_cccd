@@ -33,9 +33,20 @@ def load_yoloonnx_4cornercarddet_model(configs: Optional[Dict[str, Any]] = None)
     """
     try:
         configs = configs or {}
-        # logger.info(f"Loading YOLOv11 detection 4 corner card model with config: {configs}")
-        model = onnxruntime.InferenceSession(**configs)
-        logger.info("YOLOv11 detection 4 corner card model loaded successfully")
+        model_path = configs.get('path_or_bytes')
+        providers = configs.get('providers', ['CPUExecutionProvider'])
+
+        # Set up session options for optimization
+        sess_options = onnxruntime.SessionOptions()
+        sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
+
+        model = onnxruntime.InferenceSession(
+            model_path,
+            sess_options=sess_options,
+            providers=providers
+        )
+        logger.info(f"YOLOv11 detection 4 corner card model loaded successfully with providers: {model.get_providers()}")
         return model
     except Exception as e:
         logger.error(f"Failed to load YOLOv11 detection 4 corner card model: {str(e)}")
@@ -56,14 +67,25 @@ def load_yoloonnx_textregiondet_model(configs: Optional[Dict[str, Any]] = None) 
     """
     try:
         configs = configs or {}
-        # logger.info(f"Loading YOLOv11 text detection model with config: {configs}")
-        model = onnxruntime.InferenceSession(**configs)
-        logger.info("YOLOv11 text detection model loaded successfully")
+        model_path = configs.get('path_or_bytes')
+        providers = configs.get('providers', ['CPUExecutionProvider'])
+
+        # Set up session options for optimization
+        sess_options = onnxruntime.SessionOptions()
+        sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
+        sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
+
+        model = onnxruntime.InferenceSession(
+            model_path,
+            sess_options=sess_options,
+            providers=providers
+        )
+        logger.info(f"YOLOv11 text detection model loaded successfully with providers: {model.get_providers()}")
         return model
     except Exception as e:
         logger.error(f"Failed to load YOLOv11 text detection model: {str(e)}")
         raise ModelNotLoadedError(f"Failed to load YOLOv11 text detection model: {str(e)}")
-    
+
 def load_paddle_rec_model(configs: Optional[Dict[str, Any]] = None) -> TextRecognition:
     """
     Load PaddleOCR model for text image recognition.
@@ -86,7 +108,7 @@ def load_paddle_rec_model(configs: Optional[Dict[str, Any]] = None) -> TextRecog
     except Exception as e:
         logger.error(f"Failed to load PaddleOCR recognition model: {str(e)}")
         raise ModelNotLoadedError(f"Failed to load PaddleOCR recognition model: {str(e)}")
-    
+
 def load_vietocronnx_rec_model() -> Tuple:
     """
     Load VietOCR model for text recognition.
@@ -116,15 +138,15 @@ def load_vietocronnx_rec_model() -> Tuple:
         if enable_cuda:
             # Get ONNX execution options from settings
             sess_options = onnxruntime.SessionOptions()
-            
+
             # Enable CUDA optimization
             sess_options.graph_optimization_level = onnxruntime.GraphOptimizationLevel.ORT_ENABLE_ALL
-            
+
             # Set execution mode
             sess_options.execution_mode = onnxruntime.ExecutionMode.ORT_SEQUENTIAL
         else:
             sess_options = None
-        
+
         # Create inference sessions with GPU support
         cnn_session = onnxruntime.InferenceSession(
             settings.vietocr_configs['cnn_onnx_path'],
@@ -141,7 +163,7 @@ def load_vietocronnx_rec_model() -> Tuple:
             sess_options=sess_options,
             providers=providers
         )
-        
+
         session = (cnn_session, encoder_session, decoder_session)
         config = Cfg.load_config_from_file(
             fname = './src/vietocrOnnxModule/config/vgg-seq2seq.yml',
