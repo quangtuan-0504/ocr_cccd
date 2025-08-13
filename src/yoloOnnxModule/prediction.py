@@ -141,7 +141,10 @@ def save_img_res(rescaled_results, confidences, image, classes, save_path):
         cv2.rectangle(image,(int(x1),int(y1)),(int(x2),int(y2)),(255,0, 0),1)
         cv2.putText(image,classes[cls_id]+' '+conf,(x1,y1-5),
                     cv2.FONT_HERSHEY_SIMPLEX,0.9,(255,0,0),1)
+    if not os.path.exists(os.path.dirname(save_path)):
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
     cv2.imwrite(save_path, image)
+    del image
 def yoloonnx_predict(image: np.ndarray, model: onnxruntime.InferenceSession, format_box: str, configs: Dict[str, Any]) -> np.ndarray:
     """
     Run inference on the input image using the YOLO Onnx model.
@@ -166,10 +169,11 @@ def yoloonnx_predict(image: np.ndarray, model: onnxruntime.InferenceSession, for
     rescaled_results, confidences = rescale_back(results, img_w, img_h, iou)
 
     if configs.get('save', False):
+        img_cp = image.copy()
         save_img_res(
             rescaled_results=rescaled_results,
             confidences=confidences,
-            image=image,
+            image=img_cp,
             classes=configs.get('classes', {}),
             save_path=os.path.join(configs.get('project', 'run'), configs.get('name', 'detect'),'image.jpg')
         )
@@ -189,16 +193,5 @@ def yoloonnx_predict(image: np.ndarray, model: onnxruntime.InferenceSession, for
         w = x2 - x1
         h = y2 - y1
         xywh = np.column_stack((x_center, y_center, w, h))
-        # if configs['save']:
-        #     for res, conf in zip(rescaled_results, confidences):
-        #         x1,y1,x2,y2, cls_id = res
-        #         cls_id = int(cls_id)
-        #         x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
-        #         conf = "{:.2f}".format(conf)
-        #         # draw the bounding boxes
-        #         cv2.rectangle(image,(int(x1),int(y1)),(int(x2),int(y2)),(255,0, 0),1)
-        #         cv2.putText(image,classes[cls_id]+' '+conf,(x1,y1-17),
-        #                     cv2.FONT_HERSHEY_SIMPLEX,0.7,(255,0,0),1)
-        #     cv2.imwrite("Output.jpg", image)
         del rescaled_results, xyxy, x_center, y_center, w, h, preprocessed_image
         return xywh, conf, cls
