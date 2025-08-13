@@ -99,6 +99,7 @@ class Settings(BaseSettings):
             "iou": 0.3,
             "imgsz": (640, 640),
             "max_det": 10,
+            "classes": CLASS_NAMES,
             "project": 'analysis_error',
             "name": 'cc_det',
             "save": False
@@ -118,6 +119,7 @@ class Settings(BaseSettings):
                 "iou": 0.3,
                 "imgsz": (640, 640),
                 "max_det": 10,
+                "classes": FIELD_CLASS['cc'],
                 "project": 'analysis_error',
                 "name": 'cc_det',
                 "save": False
@@ -134,6 +136,7 @@ class Settings(BaseSettings):
                 "iou": 0.3,
                 "imgsz": (640, 640),
                 "max_det": 10,
+                "classes": FIELD_CLASS['cccd'],
                 "project": 'analysis_error',
                 "name": 'cccd_det',
                 "save": False

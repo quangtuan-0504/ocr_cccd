@@ -3,11 +3,7 @@ import cv2
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from model.vocab import Vocab
-from model.transformerocr import VietOCR
 import math
-from PIL import Image
-import time
 
 
 def translate_onnx(img, session, max_seq_length=128, sos_token=1, eos_token=2):
@@ -71,19 +67,6 @@ def translate_onnx(img, session, max_seq_length=128, sos_token=1, eos_token=2):
         # gc.collect()
         raise e
 
-def build_model(config):
-    vocab = Vocab(config['vocab'])
-    device = config['device']
-    
-    model = VietOCR(len(vocab),
-            config['backbone'],
-            config['cnn'], 
-            config['transformer'],
-            config['seq_modeling'])
-    
-    model = model.to(device)
-
-    return model, vocab
 
 def resize(w, h, expected_height, image_min_width, image_max_width):
     new_w = int(expected_height * float(w) / float(h))
