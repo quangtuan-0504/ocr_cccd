@@ -121,12 +121,12 @@ class IdCardOCRService:
                     logger.warning(f"Skipping invalid text region: {x_min},{y_min},{x_max},{y_max}")
                     continue
                     
-                cropped_img = cropped_image[y_min:y_max, x_min:x_max]
+                textregion_img = cropped_image[y_min:y_max, x_min:x_max]
                 str_cls = self.CLASS_FIELD_NAME[required_type][classes[j]]
                 
                 fieldname_textregion_score.append({
                     'field': str_cls,
-                    'text_region': cropped_img, # np.array
+                    'text_region': textregion_img, # np.array
                     'score': scores[j],
                     'y_min': y_min
                 })
