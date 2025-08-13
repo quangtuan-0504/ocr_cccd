@@ -81,13 +81,13 @@ class Settings(BaseSettings):
     YOLO_DET_TEXTCC_MODEL_PATH: str = "model/detcls_text_region/cc_best.onnx"
     YOLO_DET_TEXTCCCD_MODEL_PATH: str = "model/detcls_text_region/cccd_best.onnx"
  
-    YOLO_CONF_THRESHOLD_DET_CORNERCARD: float = 0.25
+    YOLO_CONF_THRESHOLD_DET_CORNERCARD: float = 0.2
     YOLO_CONF_THRESHOLD_DET_TEXT: float = 0.5
  
     PADDLE_REC_TEXTREGION_MODEL_PATH: str = "model/en_PP-OCRv4_mobile_rec"
     VIETOCR_REC_TEXTREGION_MODEL_PATH: str = "model/vietocr/"
 
-    PROVIDERS_ONNXRUNTIME = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if 'CUDAExecutionProvider' in ort.get_available_providers() else ['CPUExecutionProvider']
+    PROVIDERS_ONNXRUNTIME: List = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if 'CUDAExecutionProvider' in ort.get_available_providers() else ['CPUExecutionProvider']
     # YOLOv11 detection 4 corner card model for card detection
     yolo_4cornercarddet_configs: Dict[str, Dict[str, Any]] = {
         "initial": {
