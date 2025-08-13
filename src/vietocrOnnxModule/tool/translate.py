@@ -1,4 +1,3 @@
-import torch
 import numpy as np
 import cv2
 import sys
@@ -10,36 +9,6 @@ import math
 from PIL import Image
 import time
 
-
-def translate(img, model, max_seq_length=128, sos_token=1, eos_token=2):
-    """data: BxCxHxW"""
-    model.eval()
-    device = img.device
-
-    with torch.no_grad():
-        src = model.cnn(img)
-        memory = model.transformer.forward_encoder(src)
-
-        translated_sentence = [[sos_token] * len(img)]
-        max_length = 0
-
-        while max_length <= max_seq_length and not all(np.any(np.asarray(translated_sentence).T == eos_token, axis=1)):
-            tgt_inp = torch.LongTensor(translated_sentence).to(device)
-            output, memory = model.transformer.forward_decoder(tgt_inp, memory)
-            output = output.to('cpu')
-            
-            values, indices = torch.topk(output, 1)
-            indices = indices[:, -1, 0]
-            indices = indices.tolist()
-
-            translated_sentence.append(indices)
-            max_length += 1
-
-            del output
-
-        translated_sentence = np.asarray(translated_sentence).T
-
-    return translated_sentence
 
 def translate_onnx(img, session, max_seq_length=128, sos_token=1, eos_token=2):
     """data: BxCxHxW"""
@@ -74,18 +43,17 @@ def translate_onnx(img, session, max_seq_length=128, sos_token=1, eos_token=2):
 
             output, hidden, _ = decoder_session.run(None, decoder_input)
             output = np.expand_dims(output, axis=1)
-            # Convert to torch tensor for efficient processing
-            output = torch.from_numpy(output)
-
-            values, indices = torch.topk(output, 1)
-            indices = indices[:, -1, 0]
+            
+            # Use NumPy instead of torch for finding top values
+            indices = np.argmax(output, axis=-1)
+            indices = indices[:, -1]
             indices = indices.tolist()
 
             translated_sentence.append(indices)
             max_length += 1
 
             # Clean up variables for this iteration
-            del output, values, indices, decoder_input
+            del output, indices, decoder_input
 
         translated_sentence = np.asarray(translated_sentence).T
         # start = time.time()

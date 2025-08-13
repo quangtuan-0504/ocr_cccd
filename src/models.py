@@ -14,7 +14,6 @@ from vietocrOnnxModule.model.vocab import Vocab
 from src.configs import settings
 from src.exceptions import ModelNotLoadedError
 from src.logger import logger
-import torch
 # import pynvml
 
 

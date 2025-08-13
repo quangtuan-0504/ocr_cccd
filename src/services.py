@@ -21,7 +21,6 @@ from utils import (
 
 from logger import logger
 from exceptions import CardDetectionError, BadCaptureError
-import torch
 import onnxruntime
 
 class IdCardOCRService:
@@ -383,6 +382,6 @@ class IdCardOCRService:
                 "errorMessage": f"ID card processing failed: {str(e)}",
                 "data": []
             }
-        finally:
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+        # finally:
+        #     if 'CUDAExecutionProvider' in onnxruntime.get_available_providers():
+        #         pass

@@ -1,11 +1,10 @@
 from fastapi import FastAPI
 from contextlib import asynccontextmanager
 import logging
-import torch
 import sys
 import os
 from typing import Dict, Any
-
+import onnxruntime as ort
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from src.logger import logger
 from src.configs import settings
@@ -77,10 +76,10 @@ async def app_lifespan(app: FastAPI):
     """
     try:
         # Log GPU availability
-        logger.info(f"GPU available: {torch.cuda.is_available()}")
-        if torch.cuda.is_available():
-            logger.info(f"GPU device: {torch.cuda.get_device_name(0)}")
-            
+        logger.info(f"GPU available: {'CUDAExecutionProvider' in ort.get_available_providers()}")
+        if 'CUDAExecutionProvider' in ort.get_available_providers():
+            logger.info(f"GPU device: {ort.get_device()}")
+
         # Load resources
         logger.info("Loading application resources...")
         service = get_services()
