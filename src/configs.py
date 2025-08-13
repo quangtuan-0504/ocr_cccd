@@ -1,7 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Dict, List, Any, Union
-import torch
- 
+import onnxruntime as ort 
  
 class Settings(BaseSettings):
     """
@@ -82,22 +81,27 @@ class Settings(BaseSettings):
     YOLO_DET_TEXTCC_MODEL_PATH: str = "model/detcls_text_region/cc_best.onnx"
     YOLO_DET_TEXTCCCD_MODEL_PATH: str = "model/detcls_text_region/cccd_best.onnx"
  
-    YOLO_CONF_THRESHOLD_DET_CORNERCARD: float = 0.35
+    YOLO_CONF_THRESHOLD_DET_CORNERCARD: float = 0.25
     YOLO_CONF_THRESHOLD_DET_TEXT: float = 0.5
  
     PADDLE_REC_TEXTREGION_MODEL_PATH: str = "model/en_PP-OCRv4_mobile_rec"
     VIETOCR_REC_TEXTREGION_MODEL_PATH: str = "model/vietocr/"
+
+    PROVIDERS_ONNXRUNTIME = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if 'CUDAExecutionProvider' in ort.get_available_providers() else ['CPUExecutionProvider']
     # YOLOv11 detection 4 corner card model for card detection
     yolo_4cornercarddet_configs: Dict[str, Dict[str, Any]] = {
         "initial": {
             "path_or_bytes": YOLO_DET_4CORNERCARD_MODEL_PATH,
-            "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'] if torch.cuda.is_available() else ['CPUExecutionProvider']
+            "providers": PROVIDERS_ONNXRUNTIME
         },
         "inference": {
             "conf": YOLO_CONF_THRESHOLD_DET_CORNERCARD,
             "iou": 0.3,
             "imgsz": (640, 640),
             "max_det": 10,
+            "project": 'analysis_error',
+            "name": 'cc_det',
+            "save": False
         }
     }
  
@@ -107,13 +111,15 @@ class Settings(BaseSettings):
         "cc": {
             "initial": {
                 "path_or_bytes": YOLO_DET_TEXTCC_MODEL_PATH,
-                "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'] if torch.cuda.is_available() else ['CPUExecutionProvider']
+                "providers": PROVIDERS_ONNXRUNTIME
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD_DET_TEXT,
                 "iou": 0.3,
                 "imgsz": (640, 640),
                 "max_det": 10,
+                "project": 'analysis_error',
+                "name": 'cc_det',
                 "save": False
             }
         },
@@ -121,13 +127,15 @@ class Settings(BaseSettings):
         "cccd": {
             "initial": {
                 "path_or_bytes": YOLO_DET_TEXTCCCD_MODEL_PATH,
-                "providers": ['CUDAExecutionProvider', 'CPUExecutionProvider'] if torch.cuda.is_available() else ['CPUExecutionProvider']
+                "providers": PROVIDERS_ONNXRUNTIME
             },
             "inference": {
                 "conf": YOLO_CONF_THRESHOLD_DET_TEXT,
                 "iou": 0.3,
                 "imgsz": (640, 640),
                 "max_det": 10,
+                "project": 'analysis_error',
+                "name": 'cccd_det',
                 "save": False
             }
         }
@@ -137,7 +145,7 @@ class Settings(BaseSettings):
         "initial": {
             "model_name": "en_PP-OCRv4_mobile_rec",
             "model_dir": PADDLE_REC_TEXTREGION_MODEL_PATH,
-            "device": "gpu" if torch.cuda.is_available() else "cpu",
+            "device": "gpu" if 'CUDAExecutionProvider' in ort.get_available_providers() else "cpu",
             "enable_hpi": False,
         },
         "inference": {
@@ -150,8 +158,7 @@ class Settings(BaseSettings):
         'encoder_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/encoder.onnx',
         'decoder_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/decoder.onnx',
         'onnx_execution_options': {
-            # 'enable_cuda': torch.cuda.is_available()
-            'enable_cuda': False
+            'enable_cuda': False # 'CUDAExecutionProvider' in ort.get_available_providers()
         }
     }
  

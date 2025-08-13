@@ -120,16 +120,8 @@ def load_vietocronnx_rec_model() -> Tuple:
         RuntimeError: If the VietOCR model fails to load.
     """
     try:
-        # # Check cuda availability
-        # try:
-        #     pynvml.nvmlInit()
-        #     cuda_check = pynvml.nvmlDeviceGetCount() > 0
-        #     pynvml.nvmlShutdown()
-        # except Exception:
-        #     cuda_check = False
-        cuda_check = torch.cuda.is_available()
         # Enable cuda if available
-        enable_cuda = settings.vietocr_configs.get('onnx_execution_options', {}).get('enable_cuda', False) and cuda_check
+        enable_cuda = settings.vietocr_configs.get('onnx_execution_options', {}).get('enable_cuda', False)
         # Define providers based on GPU availability
         providers = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if enable_cuda else ['CPUExecutionProvider']
         logger.info(f"Using ONNX Runtime providers for VietOCR: {providers}")
