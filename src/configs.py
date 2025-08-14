@@ -4,23 +4,36 @@ import onnxruntime as ort
 import yaml
 import os
 from pathlib import Path
- 
+
 class Settings(BaseSettings):
     """
     Configuration settings for the OCR identification card application.
     """
     # Configuration for .env file loading
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8")
- 
+
+    @staticmethod
+    def _load_yaml_config():
+        """Load configuration from YAML file"""
+        yaml_path = Path(__file__).parent.parent / "configs.yml"
+        if yaml_path.exists():
+            with open(yaml_path, 'r', encoding='utf-8') as file:
+                config = yaml.safe_load(file)
+            return config
+        else:
+            raise ValueError("not found file configs path to models")
+
+    config: Dict[str,Dict[str,str|float|int]] = _load_yaml_config()  
+
     # Application settings
     app_name: str = "OCR identification card application"
- 
+
     # Card validation thresholds
     MIN_AREA_RATIO: float = 0.1     # Minimum card area ratio relative to image
     MAX_AREA_RATIO: float = 0.95    # Maximum card area ratio relative to image
     ASPECT_RATIO_MIN: float = 1.0   # Minimum card aspect ratio (width/height)
     ASPECT_RATIO_MAX: float = 2.0   # Maximum card aspect ratio (width/height)
- 
+
     # Card type class names
     CLASS_NAMES: Dict[int, str] = {
         # 0: 'top_left',
@@ -32,7 +45,7 @@ class Settings(BaseSettings):
         # 6: "cccd_front",
         # 7: "cccd_back",
         # 8: "other_card"
- 
+
         # toy model class names
         0: 'bottom_left',
         1: 'bottom_right',
@@ -44,7 +57,7 @@ class Settings(BaseSettings):
         7: "cccd_back",
         8: "other_card"
     }
- 
+
     # Field class definitions for different card types
     FIELD_CLASS: Dict[str, Dict[int, str]] = {
         # Citizen card (cc) field classes
@@ -79,17 +92,18 @@ class Settings(BaseSettings):
             12: 'mrz'
         }
     }
- 
-    # Model paths loaded from YAML
-    YOLO_DET_4CORNERCARD_MODEL_PATH: str = ""
-    YOLO_DET_TEXTCC_MODEL_PATH: str = ""
-    YOLO_DET_TEXTCCCD_MODEL_PATH: str = ""
-    PADDLE_REC_TEXTREGION_MODEL_PATH: str = ""
-    VIETOCR_REC_TEXTREGION_MODEL_PATH: str = ""
- 
+
+    YOLO_DET_4CORNERCARD_MODEL_PATH: str = config['model_paths']['yolo_det_4cornercard_model_path']
+    YOLO_DET_TEXTCC_MODEL_PATH: str = config['model_paths']['yolo_det_textcc_model_path']
+    YOLO_DET_TEXTCCCD_MODEL_PATH: str = config['model_paths']['yolo_det_textcccd_model_path']
+
+    PADDLE_REC_TEXTREGION_MODEL_PATH: str = config['model_paths']['paddle_rec_textregion_model_path']
+    VIETOCR_REC_TEXTREGION_MODEL_PATH: str = config['model_paths']['vietocr_rec_textregion_model_path']
+
     YOLO_CONF_THRESHOLD_DET_CORNERCARD: float = 0.2
     YOLO_CONF_THRESHOLD_DET_TEXT: float = 0.5
- 
+
+
     PROVIDERS_ONNXRUNTIME: List = ['CUDAExecutionProvider', 'CPUExecutionProvider'] if 'CUDAExecutionProvider' in ort.get_available_providers() else ['CPUExecutionProvider']
     # YOLOv11 detection 4 corner card model for card detection
     yolo_4cornercarddet_configs: Dict[str, Dict[str, Any]] = {
@@ -108,7 +122,7 @@ class Settings(BaseSettings):
             "save": False
         }
     }
- 
+
     # YOLO text region detection models
     yolo_textregiondet_configs: Dict[str, Dict[str, Any]] = {
         # Citizen card (cc) text detection model
@@ -167,34 +181,11 @@ class Settings(BaseSettings):
             'enable_cuda': False # 'CUDAExecutionProvider' in ort.get_available_providers()
         }
     }
- 
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
-        self._load_yaml_config()
- 
-    def _load_yaml_config(self):
-        """Load configuration from YAML file"""
-        yaml_path = Path(__file__).parent.parent / "configs.yml"
-        if yaml_path.exists():
-            with open(yaml_path, 'r', encoding='utf-8') as file:
-                config = yaml.safe_load(file)
-                
-            # Load model paths
-            model_paths = config.get('model_paths', {})
-            self.YOLO_DET_4CORNERCARD_MODEL_PATH = model_paths.get('yolo_det_4cornercard_model_path', "model/det_card/best.onnx")
-            self.YOLO_DET_TEXTCC_MODEL_PATH = model_paths.get('yolo_det_textcc_model_path', "model/detcls_text_region/cc_best.onnx")
-            self.YOLO_DET_TEXTCCCD_MODEL_PATH = model_paths.get('yolo_det_textcccd_model_path', "model/detcls_text_region/cccd_best.onnx")
-            self.PADDLE_REC_TEXTREGION_MODEL_PATH = model_paths.get('paddle_rec_textregion_model_path', "model/en_PP-OCRv4_mobile_rec")
-            self.VIETOCR_REC_TEXTREGION_MODEL_PATH = model_paths.get('vietocr_rec_textregion_model_path', "model/vietocr/")
-            
-            # Load thresholds
-            thresholds = config.get('thresholds', {})
-            self.YOLO_CONF_THRESHOLD_DET_CORNERCARD = thresholds.get('yolo_conf_threshold_det_cornercard', 0.2)
-            self.YOLO_CONF_THRESHOLD_DET_TEXT = thresholds.get('yolo_conf_threshold_det_text', 0.5)
- 
- 
+
+
+
 # Create settings instance
 settings = Settings()
- 
+
 if __name__ == "__main__":
     print(settings)
