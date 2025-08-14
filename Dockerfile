@@ -31,12 +31,10 @@ ENV PIP_NO_VERIFY_CERTS=1
  
  
  
-RUN pip install --no-cache-dir torch==2.6.0 torchvision==0.21.0 --index-url https://download.pytorch.org/whl/cu124
 # RUN python -m pip install --no-cache-dir paddlepaddle-gpu==3.1.0 -i https://www.paddlepaddle.org.cn/packages/stable/cu118/ --trusted-host www.paddlepaddle.org.cn
 RUN pip install --no-cache-dir paddlepaddle==3.1.0
 RUN pip install --no-cache-dir paddleocr==3.1.0
 RUN pip install --no-cache-dir fastapi[standard]
-RUN pip install --no-cache-dir ultralytics==8.3.169 --no-deps
 RUN pip install --no-cache-dir onnx==1.18.0
 RUN pip install --no-cache-dir onnxruntime-gpu==1.22.0
  
@@ -91,6 +89,7 @@ CMD ["python3", "main.py"]
 #   -v $(pwd)/model:/app/model \
 #   -v $(pwd)/src:/app/src \
 #   -v $(pwd)/main.py:/app/main.py \
+#   -v $(pwd)/configs.yml:/app/configs.yml \
 #   -p 8088:8088 \
 #   --name ocr-container \
 #   ocr-app

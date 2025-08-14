@@ -15,6 +15,7 @@ services:
       - ./model:/app/model
       - ./src:/app/src
       - ./main.py:/app/main.py
+      - ./configs.yml:/app/configs.yml
     ports:
       - "8088:8088"
     deploy:
