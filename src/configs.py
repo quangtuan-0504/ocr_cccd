@@ -36,26 +36,26 @@ class Settings(BaseSettings):
 
     # Card type class names
     CLASS_NAMES: Dict[int, str] = {
-        # 0: 'top_left',
-        # 1: 'top_right',
-        # 2: 'bottom_right',
-        # 3: 'bottom_left',
-        # 4: 'cc_front',
-        # 5: 'cc_back',
-        # 6: "cccd_front",
-        # 7: "cccd_back",
-        # 8: "other_card"
-
-        # toy model class names
-        0: 'bottom_left',
-        1: 'bottom_right',
-        2: 'cc_back',
-        3: 'cc_front',
-        4: 'top_left',
-        5: 'top_right',
+        0: 'top_left',
+        1: 'top_right',
+        2: 'bottom_right',
+        3: 'bottom_left',
+        4: 'cc_front',
+        5: 'cc_back',
         6: "cccd_front",
         7: "cccd_back",
         8: "other_card"
+
+        # toy model class names
+        # 0: 'bottom_left',
+        # 1: 'bottom_right',
+        # 2: 'cc_back',
+        # 3: 'cc_front',
+        # 4: 'top_left',
+        # 5: 'top_right',
+        # 6: "cccd_front",
+        # 7: "cccd_back",
+        # 8: "other_card"
     }
 
     # Field class definitions for different card types
@@ -118,7 +118,7 @@ class Settings(BaseSettings):
             "max_det": 10,
             "classes": CLASS_NAMES,
             "project": 'analysis_error',
-            "name": 'cc_det',
+            "name": 'crop',
             "save": False
         }
     }
