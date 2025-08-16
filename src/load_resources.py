@@ -15,7 +15,7 @@ from src.models import (
     load_vietocronnx_rec_model
 )
 from services import IdCardOCRService
-
+from src.yoloOnnxModule.prediction import YOLOv11OnnxRuntime
 
 def get_services() -> Dict[str, Any]:
     """
@@ -30,15 +30,16 @@ def get_services() -> Dict[str, Any]:
     resources = {}
     try:
         logger.info('Loading YOLO corner card detection model')
-        yolo_4cornercarddet_model = load_yoloonnx_4cornercarddet_model(settings.yolo_4cornercarddet_configs.get('initial', {}))
-        
+        model_4cornercarddet = load_yoloonnx_4cornercarddet_model(settings.yolo_4cornercarddet_configs.get('initial', {}))
+        yolo_4cornercarddet_model = YOLOv11OnnxRuntime(model_4cornercarddet)
         logger.setLevel(logging.INFO)
     
         logger.info('Loading YOLO text region detection models')
         yolo_textregiondet_model = {}
         for card_type, cfg in settings.yolo_textregiondet_configs.items():
             logger.info(f'Loading text detection model for {card_type}')
-            yolo_textregiondet_model[card_type] = load_yoloonnx_textregiondet_model(cfg.get('initial', {}))
+            model_dettextregion = load_yoloonnx_textregiondet_model(cfg.get('initial', {}))
+            yolo_textregiondet_model[card_type] = YOLOv11OnnxRuntime(model_dettextregion)
 
         logger.info('Loading paddle recognition model')
         paddle_imgrec_model = load_paddle_rec_model(settings.paddle_imgrec_configs.get('initial', {}))

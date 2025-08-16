@@ -139,7 +139,7 @@ class Settings(BaseSettings):
                 "classes": FIELD_CLASS['cc'],
                 "project": 'analysis_error',
                 "name": 'cc_det',
-                "save": False
+                "save": False,
             }
         },
         # Citizen ID card (cccd) text detection model
@@ -156,7 +156,7 @@ class Settings(BaseSettings):
                 "classes": FIELD_CLASS['cccd'],
                 "project": 'analysis_error',
                 "name": 'cccd_det',
-                "save": False
+                "save": False,
             }
         }
     }

@@ -8,7 +8,7 @@ import concurrent.futures
 import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
-from yoloOnnxModule.prediction import yoloonnx_predict
+from yoloOnnxModule.prediction import YOLOv11OnnxRuntime
 from vietocrOnnxModule.tool.translate import translate_onnx, process_input
 from configs import settings
 from utils import (
@@ -32,8 +32,8 @@ class IdCardOCRService:
     
     def __init__(
         self,
-        yolo_4cornercarddet_model: onnxruntime.InferenceSession,
-        yolo_textregiondet_model: Dict[str, onnxruntime.InferenceSession],
+        yolo_4cornercarddet_model: YOLOv11OnnxRuntime,
+        yolo_textregiondet_model: Dict[str, YOLOv11OnnxRuntime],
         paddle_imgrec_model: TextRecognition,
         vietocr_rec_model: Tuple
     ):
@@ -71,10 +71,16 @@ class IdCardOCRService:
             inference_config = settings.yolo_4cornercarddet_configs["inference"]
             
             # Run YOLOv11 inference
-            xywh, conf, cls = yoloonnx_predict(image_np, self.cornercarddet_model,'xywh', inference_config)
-            cropped_image, card_type_name, card_type_conf = validate_and_crop_card(xywh, conf, cls, image_np)
+            results = self.cornercarddet_model.predict(image_np, inference_config)
+            # Access results
+            boxes_xyxy = results['boxes_xyxy_original']  # [x1, y1, x2, y2] format
+            boxes_xywh = results['boxes_xywh_original']  # [x, y, w, h] format
+            scores = results['scores']
+            class_ids = results['class_ids']
+            # Pass in the original image and boxes corresponding it to crop the card on the original image.
+            cropped_image, card_type_name, card_type_conf = validate_and_crop_card(boxes_xywh, scores, class_ids, image_np)
             # Clean up tensors and variables immediately
-            del image_np, xywh, conf, cls
+            del image_np, boxes_xywh, scores, class_ids, boxes_xyxy
             return cropped_image, {
                 "class": card_type_name,
                 "confidence": float(card_type_conf)
@@ -102,7 +108,12 @@ class IdCardOCRService:
         
         try:
             # Run YOLOv11 inference
-            boxes_xyxy, scores, classes = yoloonnx_predict(cropped_image, self.textregiondet_model[required_type], 'xyxy', inference_config)
+            results = self.textregiondet_model[required_type].predict(cropped_image, inference_config)
+
+            boxes_xyxy = results['boxes_xyxy_original']
+            boxes_xywh = results['boxes_xywh_original']
+            scores = results['scores']
+            classes = results['class_ids']
 
             detected_fields = [self.CLASS_FIELD_NAME[required_type][int(cls)] for cls in classes]
             logger.info(f"Detected fields: {detected_fields}")
@@ -132,7 +143,7 @@ class IdCardOCRService:
                 })
             
             # Clean up tensors for this result
-            del boxes_xyxy, scores, classes, cropped_image
+            del boxes_xyxy, boxes_xywh, scores, classes, cropped_image
 
         except Exception as e:
             logger.error(f"Error in text detection: {str(e)}")
