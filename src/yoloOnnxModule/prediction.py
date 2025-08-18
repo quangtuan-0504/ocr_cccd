@@ -117,8 +117,8 @@ class YOLOv11OnnxRuntime:
         self.img_height, self.img_width = img.shape[:2]
 
         # Convert the image color space from BGR to RGB
-        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-
+        # img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        img_rgb = img.copy()
         # Apply letterboxing
         img_resized, gain, pad = self.letterbox(img_rgb, (self.input_height, self.input_width))
 

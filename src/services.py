@@ -65,7 +65,9 @@ class IdCardOCRService:
         """
         try:
             # Convert PIL image to numpy array once
-            image_np = np.array(image)
+            image_np = np.array(image) # PIL read image under format RGB yet, not need convert to RGB
+            # image_np = cv2.cvtColor(image_np, cv2.COLOR_BGR2RGB)
+            # print(image_np[:5,:5,:])
             
             # Use batched inference with optimized settings
             inference_config = settings.yolo_4cornercarddet_configs["inference"]
