@@ -323,7 +323,6 @@ class YOLOv11OnnxRuntime:
             'image.jpg'
         )
         classes = configs.get("classes", [])
-        return_annotated = configs.get("return_annotated", True)
 
         # Setup model parameters
         self.input_height, self.input_width = imgsz
