@@ -67,12 +67,12 @@ The API returns a JSON response with the following structure:
 }
 ```
 
-#### Success Response (errorCode: "0")
+#### Success Response (errorCode: "200")
 
 ```json
 {
-  "errorCode": "0",
-  "errorMessage": "no error",
+  "errorCode": "200",
+  "errorMessage": "sucessfully",
   "data": [
     {    
         "id": "",
@@ -173,28 +173,28 @@ The API returns a JSON response with the following structure:
 
 #### Error Responses
 
-**Error Code "1" - Image Quality/Processing Issues:**
+**Error Code "400" - Image Quality/Processing Issues:**
 ```json
 {
-  "errorCode": "1", 
+  "errorCode": "400", 
   "errorMessage": "Image quality is too low or processing failed",
   "data": []
 }
 ```
 
-**Error Code "2" - Card Detection Issues:**
+**Error Code "422" - Card Detection Issues:**
 ```json
 {
-  "errorCode": "2",
+  "errorCode": "422",
   "errorMessage": "No card detected in image or invalid card type", 
   "data": []
 }
 ```
 
-**Error Code "3" - Text Extraction Issues:**
+**Error Code "422" - Text Extraction Issues:**
 ```json
 {
-  "errorCode": "3",
+  "errorCode": "422",
   "errorMessage": "Text extraction failed",
   "data": []
 }

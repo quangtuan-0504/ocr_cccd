@@ -331,7 +331,7 @@ class IdCardOCRService:
             
             if "error" in detection_info:
                 return {
-                    "errorCode": "2",
+                    "errorCode": "422",
                     "errorMessage":detection_info["error"],
                     "data": []
                 }
@@ -355,7 +355,7 @@ class IdCardOCRService:
 
             if "error" in field_text:
                 return {
-                    "errorCode": "3",
+                    "errorCode": "422",
                     "errorMessage": field_text["error"],
                     "data": []
                 }
@@ -366,35 +366,29 @@ class IdCardOCRService:
             logger.info(f'Time for map field: {time.time() - start_time:.3f}s')
 
             return {
-                "errorCode": "0",
+                "errorCode": "200",
                 "errorMessage": "no error",
                 "data": [mapped_text]
             }
 
         except BadCaptureError as e:
             logger.error(f"Image quality issue: {str(e)}")
-            # return {"status": "error", "message": str(e)}
             return {
-                "errorCode": "1",
+                "errorCode": "400",
                 "errorMessage": str(e),
                 "data": []
             }
         except CardDetectionError as e:
             logger.error(f"Card detection issue: {str(e)}")
-            # return {"status": "error", "message": str(e)}
             return {
-                "errorCode": "2",
+                "errorCode": "422",
                 "errorMessage": str(e),
                 "data": []
             }
         except Exception as e:
             logger.error(f"Error processing ID card: {str(e)}")
-            # return {"status": "error", "message": str(e)}
             return {
-                "errorCode": "1",
+                "errorCode": "422",
                 "errorMessage": f"ID card processing failed: {str(e)}",
                 "data": []
             }
-        # finally:
-        #     if 'CUDAExecutionProvider' in onnxruntime.get_available_providers():
-        #         pass

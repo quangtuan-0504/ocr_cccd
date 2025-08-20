@@ -67,12 +67,12 @@ API trả về phản hồi JSON với cấu trúc sau:
 }
 ```
 
-#### Phản hồi thành công (errorCode: "0")
+#### Phản hồi thành công (errorCode: "200")
 
 ```json
 {
-  "errorCode": "0",
-  "errorMessage": "không có lỗi",
+  "errorCode": "200",
+  "errorMessage": "thành công",
   "data": [
     {    
         "id": "",
@@ -173,28 +173,28 @@ API trả về phản hồi JSON với cấu trúc sau:
 
 #### Phản hồi lỗi
 
-**Mã lỗi "1" - Vấn đề chất lượng/xử lý hình ảnh:**
+**Mã lỗi "400" - Vấn đề chất lượng/xử lý hình ảnh:**
 ```json
 {
-  "errorCode": "1", 
+  "errorCode": "400", 
   "errorMessage": "Chất lượng hình ảnh quá thấp hoặc xử lý thất bại",
   "data": []
 }
 ```
 
-**Mã lỗi "2" - Vấn đề phát hiện thẻ:**
+**Mã lỗi "422" - Vấn đề phát hiện thẻ:**
 ```json
 {
-  "errorCode": "2",
+  "errorCode": "422",
   "errorMessage": "Không phát hiện thẻ trong hình ảnh hoặc loại thẻ không hợp lệ", 
   "data": []
 }
 ```
 
-**Mã lỗi "3" - Vấn đề trích xuất văn bản:**
+**Mã lỗi "422" - Vấn đề trích xuất văn bản:**
 ```json
 {
-  "errorCode": "3",
+  "errorCode": "422",
   "errorMessage": "Trích xuất văn bản thất bại",
   "data": []
 }
