@@ -61,12 +61,7 @@ The API returns a JSON response with the following structure:
   "errorMessage": "string", 
   "data": [
     {
-      "card_type": "string",
-      "card_side": "string",
-      "extracted_fields": {
-        "field_name": "extracted_text",
-        ...
-      }
+      // Extracted card information
     }
   ]
 }
@@ -222,19 +217,19 @@ The API returns a JSON response with the following structure:
 - **Orientation**: Any orientation (auto-corrected)
 - **Size**: Maximum file size depends on server configuration
 
-## Processing Pipeline
+## Processing Workflow
 
-1. **Image Validation**: Checks image quality and format
-2. **Card Detection**: Uses YOLOv11 OBB to detect and crop the card
-3. **Orientation Correction**: Automatically rotates the image to correct orientation
-4. **Image Unwarping**: Corrects perspective distortion
-5. **Text Detection**: Identifies text regions using YOLO models
-6. **Text Recognition**: Extracts text using VietOCR ONNX models
-7. **Field Mapping**: Maps extracted text to appropriate card fields
+1. **Image Validation**: Check image quality and format
+2. **Card Detection**: Detect and crop the ID card from the image
+3. **Text Region Detection**: Identify text fields on the card
+4. **Text Extraction**: Extract text using OCR (VietOCR for Vietnamese text, PaddleOCR for MRZ)
+5. **Field Mapping**: Map extracted text to corresponding card fields
+6. **Response Generation**: Return structured data
+
 
 ## Performance
 
-- **Average Processing Time**: 1-3 seconds per image
+- **Average Processing Time**: 0.2-1 seconds per image
 - **Concurrent Requests**: Supported with thread pool processing
 - **Memory Optimization**: GPU memory automatically cleared after processing
 
