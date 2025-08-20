@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import sys
 import os
+import argparse
  
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 from src.logger import logger
@@ -35,14 +36,20 @@ async def root():
  
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8088)
- 
- 
- 
- 
- 
- 
- 
- 
- 
- 
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description="OCR identification card application")
+    parser.add_argument("--host", default="0.0.0.0", help="Host to bind (default: 0.0.0.0)")
+    parser.add_argument("--port", type=int, default=8088, help="Port to bind (default: 8088)")
+    args = parser.parse_args()
+    
+    uvicorn.run(app, host=args.host, port=args.port)
+
+
+
+
+
+
+
+
+
