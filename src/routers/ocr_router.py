@@ -1,4 +1,4 @@
-from fastapi import APIRouter, File, UploadFile, HTTPException, Form
+from fastapi import APIRouter, HTTPException
 from typing import Optional
 import base64
 import io
@@ -6,82 +6,123 @@ from PIL import Image
 import time
 from logger import logger
 from src.load_resources import resources
-from schemas import OCRResponse
+from schemas import BaseResponse, ResponseMessage
+from exceptions import CardDetectionError, BadCaptureError, TextRegionDetectError, TextExtractError , BadBoxError
+from pydantic import BaseModel
+from dataclasses import asdict
+
+class OCRRequest(BaseModel):
+    image_base64: str
+    request_id: Optional[str] = None
 
 
 router = APIRouter(
-    prefix="/ocr-id-card",
     tags=["OCR"]
 )
 
-@router.post("/upload-image-flexible")
-async def ocr_id_card(
-    file: Optional[UploadFile] = File(None),
-    image_base64: Optional[str] = Form(None),
-    card_type: Optional[str] = Form(None),
-    card_side: Optional[str] = Form(None),
-    file_name: Optional[str] = Form("image.jpg"),
-    mime: Optional[str] = Form(None),
-    postname: Optional[str] = Form(None),
-    sessionID: Optional[str] = Form(None),
-    deviceInfo: Optional[str] = Form(None),
-):
+@router.post("/ocr")
+async def ocr_id_card(request: OCRRequest):
     """
     Process an ID card image and extract information.
-    
-    Parameters:
-    - file: Image file upload
-    - image_base64: Base64 encoded image string
-    - card_type: Type of card (cccd, cc)
-    - card_side: Side of card (front, back)
-    - file_name: Name of file (used when image_base64 is provided)
-    
+
+    Parameters: 
+    - request: JSON body containing:
+        - image_base64: Base64 encoded image string
+        - request_id: Optional request identifier
+
     Returns:
     - OCRResponse with status, card information and extracted data
     """
     try:
         image = None
-        
-        if file:
-            # Process file upload
-            if not file.content_type.startswith("image/"):
-                raise HTTPException(status_code=400, detail="File must be an image")
-            
-            contents = await file.read()
-            image = Image.open(io.BytesIO(contents))
-            file_name = file.filename
-            
-        elif image_base64:
-            # Process base64
-            try:
-                if "," in image_base64:
-                    base64_data = image_base64.split(",")[1]
-                else:
-                    base64_data = image_base64
-                
-                image_data = base64.b64decode(base64_data)
-                image = Image.open(io.BytesIO(image_data))
-            except Exception as e:
-                raise HTTPException(status_code=400, detail=f"Invalid base64 image: {str(e)}")
-            
-        else:
-            raise HTTPException(status_code=400, detail="Please provide either a file or base64 string")
-        
-    
-        
+
+        try:
+            # Remove data URL prefix if present
+            if "," in request.image_base64:
+                base64_data = request.image_base64.split(",")[1]
+            else:
+                base64_data = request.image_base64
+
+            # Decode and open image
+            image_data = base64.b64decode(base64_data)
+            image = Image.open(io.BytesIO(image_data))
+        except ValueError as ve:
+            return asdict(
+                BaseResponse(
+                    data=[],
+                    errorCode=400,
+                    errorMessage=ResponseMessage.input_error(str(ve))
+                )
+            )
+
         # Predict using the OCR service
         start = time.time()
-        result = resources['ocr_service'].process_id_card(
-            image=image,
-        
-        )
+        result = resources['ocr_service'].process_id_card(image=image)
         processing_time = time.time() - start
-        logger.info(f'Time per request: {processing_time:.3f}s')
-        
-        return result
-        
+
+        logger.info(f'Request ID: {request.request_id}, Time: {processing_time:.3f}s')
+
+        return asdict(BaseResponse(
+                data=result,
+                errorCode=200, 
+                errorMessage=ResponseMessage.SUCCESS
+            )
+        )
+    except BadCaptureError as e:
+        logger.error(f"Bad Capture issue: {str(e)}")
+        return asdict(BaseResponse(
+                data=[],
+                errorCode=400, 
+                errorMessage=ResponseMessage.bad_capture(str(ve))
+            )
+        )
+    except CardDetectionError as e:
+        logger.error(f"Card Detect issue: {str(e)}")
+        return asdict(BaseResponse(
+                data=[],
+                errorCode=400, 
+                errorMessage=ResponseMessage.card_detect_error(str(ve))
+            )
+        )
+    except BadBoxError as e:
+        logger.error(f"Bad Box issue: {str(e)}")
+        return asdict(BaseResponse(
+                data=[],
+                errorCode=400, 
+                errorMessage=ResponseMessage.bad_box(str(ve))
+            )
+        )
+    except TextRegionDetectError as e:
+        logger.error(f"Text Region Detect issue: {str(e)}")
+        return asdict(BaseResponse(
+                data=[],
+                errorCode=400, 
+                errorMessage=ResponseMessage.text_region_det_error(str(ve))
+            )
+        )
+    except TextExtractError as e:
+        logger.error(f"Text Extract issue: {str(e)}")
+        return asdict(BaseResponse(
+                data=[],
+                errorCode=400, 
+                errorMessage=ResponseMessage.text_extract_error(str(ve))
+            )
+        )
+    except ValueError as ve:
+        return asdict(BaseResponse(
+                data=[],
+                errorCode=400, 
+                errorMessage=ResponseMessage.process_img_error(str(ve))
+            )
+        )
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {str(e)}")
+        return asdict(
+            BaseResponse(
+                data=[],
+                errorCode=500,
+                errorMessage=ResponseMessage.error_occurred(e)
+            )
+        )
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error processing image: {str(e)}")
-        raise HTTPException(status_code=400, detail=f"Error processing image: {str(e)}")

@@ -20,7 +20,7 @@ from utils import (
 
 
 from logger import logger
-from exceptions import CardDetectionError, BadCaptureError
+from exceptions import CardDetectionError, BadCaptureError, TextRegionDetectError, TextExtractError, BadBoxError
 import onnxruntime
 
 class IdCardOCRService:
@@ -90,8 +90,8 @@ class IdCardOCRService:
 
         except Exception as e:
             logger.error(f"Error predicting card: {str(e)}")
-            
-            return None, {"error": f"Card prediction failed: {str(e)}"}
+            raise CardDetectionError(f"Error predicting card: {str(e)}")
+            # return None, {"error": f"Card prediction failed: {str(e)}"}
 
     def _detect_textregion(self, cropped_image: np.ndarray, required_type: str) -> List[Dict[str, Any]]:
         """Detect and classify text regions in the cropped image.
@@ -148,8 +148,9 @@ class IdCardOCRService:
             del boxes_xyxy, boxes_xywh, scores, classes, cropped_image
 
         except Exception as e:
-            logger.error(f"Error in text detection: {str(e)}")
-        
+            logger.error(f"Error in text region detection: {str(e)}")
+            raise TextRegionDetectError(f"Error in text region detection: {str(e)}")
+
         return fieldname_textregion_score
 
     def _extract_text_region(self, region_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -306,7 +307,8 @@ class IdCardOCRService:
             return field_text, face_qr_img
         except Exception as e:
             logger.error(f"Error extracting text: {str(e)}")
-            return {"error": f"Text extraction failed: {str(e)}"}
+            raise TextExtractError(f"Error extracting text: {str(e)}")
+            # return {"error": f"Text extraction failed: {str(e)}"}
  
     def process_id_card(self, image: Image.Image) -> Dict[str, Any]:
         """Process an ID card image and extract information.
@@ -316,79 +318,40 @@ class IdCardOCRService:
         Returns:
             Dictionary containing card information and extracted text or error message.
         """
-        try:
-            # Validate and preprocess image
-            start_time = time.time()
-            validate_image_quality(image)
-            image = correct_image_orientation(image)
-            logger.info(f'Time for verify image: {time.time() - start_time:.3f}s')
 
-            # Detect and crop card
-            start_time = time.time()
-            cropped_image, detection_info = self._predict_card(image)
-            # cv2.imwrite('analysis_error/img_cropped.jpg', cropped_image)
-            logger.info(f'Time for crop card: {time.time() - start_time:.3f}s')
-            
-            if "error" in detection_info:
-                return {
-                    "errorCode": "422",
-                    "errorMessage":detection_info["error"],
-                    "data": []
-                }
-            
-            detected_class = detection_info["class"]
-            card_type, card_side = detected_class.split('_')
-            # Detect text regions
-            start_time = time.time()
-            regions = self._detect_textregion(
-                cropped_image=cropped_image,
-                required_type=card_type
-            )
-            logger.info(f'Time for text region detection: {time.time() - start_time:.3f}s')
+        # Validate and preprocess image
+        start_time = time.time()
+        validate_image_quality(image)
+        image = correct_image_orientation(image)
+        logger.info(f'Time for verify image: {time.time() - start_time:.3f}s')
 
-            # Extract text from regions (uses parallel processing internally)
-            start_time = time.time()
-            field_text, face_qr = self._extract_text(
-                fieldname_textregion_score = regions
-            )
-            logger.info(f'Time for text extraction: {time.time() - start_time:.3f}s')
+        # Detect and crop card
+        start_time = time.time()
+        cropped_image, detection_info = self._predict_card(image)
+        # cv2.imwrite('analysis_error/img_cropped.jpg', cropped_image)
+        logger.info(f'Time for crop card: {time.time() - start_time:.3f}s')        
 
-            if "error" in field_text:
-                return {
-                    "errorCode": "422",
-                    "errorMessage": field_text["error"],
-                    "data": []
-                }
+        detected_class = detection_info["class"]
+        card_type, card_side = detected_class.split('_')
+        # Detect text regions
+        start_time = time.time()
+        regions = self._detect_textregion(
+            cropped_image=cropped_image,
+            required_type=card_type
+        )
+        logger.info(f'Time for text region detection: {time.time() - start_time:.3f}s')
 
-            # Map extracted text to card fields
-            start_time = time.time()
-            mapped_text = map_text2card(fieldname_text=field_text, require_type=card_type, require_side=card_side)
-            logger.info(f'Time for map field: {time.time() - start_time:.3f}s')
+        # Extract text from regions (uses parallel processing internally)
+        start_time = time.time()
+        field_text, face_qr = self._extract_text(
+            fieldname_textregion_score = regions
+        )
+        logger.info(f'Time for text extraction: {time.time() - start_time:.3f}s')
 
-            return {
-                "errorCode": "200",
-                "errorMessage": "no error",
-                "data": [mapped_text]
-            }
+        # Map extracted text to card fields
+        start_time = time.time()
+        mapped_text = map_text2card(fieldname_text=field_text, require_type=card_type, require_side=card_side)
+        logger.info(f'Time for map field: {time.time() - start_time:.3f}s')
 
-        except BadCaptureError as e:
-            logger.error(f"Image quality issue: {str(e)}")
-            return {
-                "errorCode": "400",
-                "errorMessage": str(e),
-                "data": []
-            }
-        except CardDetectionError as e:
-            logger.error(f"Card detection issue: {str(e)}")
-            return {
-                "errorCode": "422",
-                "errorMessage": str(e),
-                "data": []
-            }
-        except Exception as e:
-            logger.error(f"Error processing ID card: {str(e)}")
-            return {
-                "errorCode": "422",
-                "errorMessage": f"ID card processing failed: {str(e)}",
-                "data": []
-            }
+        return [mapped_text]
+ 

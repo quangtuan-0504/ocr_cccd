@@ -4,14 +4,52 @@ Pydantic models for request and response validation.
 
 from pydantic import BaseModel, Field
 from typing import Dict, Any, Optional, List
+from dataclasses import dataclass
 
+class ResponseMessage:
+    # Success messages
+    SUCCESS = "Success"
 
-class OCRResponse(BaseModel):
-    """Response model for OCR API endpoints."""
-    status: str = Field(..., description="Status of the OCR process (success or error)")
-    message: Optional[str] = Field(None, description="Error message if status is error")
-    card_info: Optional[Dict[str, Any]] = Field(None, description="Information about the detected card")
-    data: Optional[Dict[str, Any]] = Field(None, description="Extracted text data from the card")
+    # Error messages
+    # Generic errors
+    INPUT_ERROR = "Input image error: {}"
+    PROCESS_ERROR = "Error processing image: {}"
+    BAD_CAPTURE = "Bad Capture issue: {}"
+    CARD_DETECT_ERROR = "Card Detect issue: {}"
+    BAD_BOX = "Bad Box issue: {}"
+    TEXT_REGION_DET_ERROR = "Text Region Detect issue: {}"
+    TEXT_EXTRACT_ERROR= "Text Extract issue: {}"
+
+    @staticmethod
+    def input_error(err: str) -> str:
+        return ResponseMessage.INPUT_ERROR.format(err)
+    @staticmethod
+    def bad_capture(err: str) -> str:
+        return ResponseMessage.BAD_CAPTURE.format(err)
+    @staticmethod
+    def card_detect_error(err: str) -> str:
+        return ResponseMessage.CARD_DETECT_ERROR.format(err)
+    @staticmethod
+    def bad_box(err: str) -> str:
+        return ResponseMessage.BAD_BOX.format(err)
+    @staticmethod
+    def text_region_det_error(err: str) -> str:
+        return ResponseMessage.TEXT_REGION_DET_ERROR.format(err)
+    @staticmethod
+    def text_extract_error(err: str) -> str:
+        return ResponseMessage.TEXT_EXTRACT_ERROR.format(err)
+    @staticmethod
+    def process_img_error(err: str) -> str:
+        return ResponseMessage.PROCESS_ERROR.format(err)
+    @staticmethod
+    def error_occurred(error: Exception) -> str:
+        return f"An unexpected error occurred: {str(error)}"
+
+@dataclass
+class BaseResponse:
+    data: List|None = None
+    errorCode: int = 200
+    errorMessage: str = ResponseMessage.SUCCESS
 
 cccd_front = {
     "id": "",
