@@ -2,7 +2,6 @@ import numpy as np
 from typing import Tuple, List, Optional, Dict, Any, Union
 from PIL import Image
 import cv2
-from paddleocr import TextRecognition
 import time
 import concurrent.futures
 import sys
@@ -17,11 +16,8 @@ from utils import (
     map_text2card,
     correct_image_orientation
 )
-
-
 from logger import logger
 from exceptions import CardDetectionError, BadCaptureError, TextRegionDetectError, TextExtractError, BadBoxError
-import onnxruntime
 
 class IdCardOCRService:
     """Service for processing ID card images using YOLOv11 OBB, PaddleOCR and VietOCR."""
@@ -34,7 +30,6 @@ class IdCardOCRService:
         self,
         yolo_4cornercarddet_model: YOLOv11OnnxRuntime,
         yolo_textregiondet_model: Dict[str, YOLOv11OnnxRuntime],
-        paddle_imgrec_model: TextRecognition,
         vietocr_rec_model: Tuple
     ):
         """Initialize the ID card OCR service.
@@ -47,13 +42,12 @@ class IdCardOCRService:
         """
         self.cornercarddet_model = yolo_4cornercarddet_model
         self.textregiondet_model = yolo_textregiondet_model
-        self.mrzrec_model = paddle_imgrec_model
         self.rec_model = vietocr_rec_model[0]
         self.vocab = vietocr_rec_model[1]
         self.vietocr_cf = vietocr_rec_model[2]
 
         # Initialize thread pool for parallel processing
-        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=4)
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=8)
     def _predict_card(self, image: Image.Image) -> Tuple[Optional[np.ndarray], Dict[str, Any]]:
         """Detect and crop the card in the image using YOLOv11 OBB.
 
@@ -198,45 +192,6 @@ class IdCardOCRService:
                 'score': 0.0,
                 'error': str(e)
             }
-    def _extract_mrz(self, region_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Extract text from a single region using VietOCR.
-       
-        Args:
-            region_data: Dictionary containing field data and image region.
-            required_type: Type of card ("cccd" or "cc").
-           
-        Returns:
-            Dictionary with field name, extracted text and metadata.
-        """
-        str_cls = region_data['field']
-        y_min = region_data['y_min']
-        score = region_data['score']
-        try:
-            # For MRZ, use PaddleOCR recognition model
-            output = self.mrzrec_model.predict(
-                input=region_data['text_region'],
-                **settings.paddle_imgrec_configs['inference']
-            )
-            # print(output) **
-            mrz_text = output[0]['rec_text']
-            del output
-            logger.info(f"Extracted text for field {str_cls}: {mrz_text}")
-           
-            return {
-                'field_name': str_cls,
-                'text': mrz_text,
-                'y_min': y_min,
-                'score': score
-            }
-        except Exception as e:
-            logger.error(f"Error extracting text for field {str_cls}: {e}")
-            return {
-                'field_name': str_cls,
-                'text': '',
-                'y_min': y_min,
-                'score': 0.0,
-                'error': str(e)
-            }
     def _extract_text(self, fieldname_textregion_score: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
         """Extract text from detected regions using VietOCR with parallel processing.
  
@@ -255,21 +210,19 @@ class IdCardOCRService:
             face_qr_img = {}
             # Use parallel processing for text extraction
             futures = []
-            mrzs = []
             for region_data in fieldname_textregion_score:
-                if region_data['field'] not in ['face', 'qr', 'mrz']:
+                if region_data['field'] not in ['face', 'qr']:
                     futures.append(
                         self.executor.submit(
                             self._extract_text_region,
                             region_data
                         )
                     )
-                elif region_data['field'] == 'mrz':
-                    mrzs.append(region_data)
                 else:
                     face_qr_img[region_data['field']] = region_data['text_region']
             # Collect results
             field_text = {}
+            mrzs = []
             for future in concurrent.futures.as_completed(futures):
                 result = future.result()
                 if 'error' in result:
@@ -280,30 +233,33 @@ class IdCardOCRService:
                 text = result['text']
                 y_min = result['y_min']
                 score = result['score']
-               
-                if str_cls in field_text:
-                    if y_min > field_text[str_cls]['y_min']:
-                        field_text[str_cls]['text'] += ' ' + text
+
+                if str_cls == 'mrz':
+                    mrzs.append(result)
+                else:
+                    if str_cls in field_text:
+                        if y_min > field_text[str_cls]['y_min']: # thêm vào đuôi, only 2 element therefore this enough
+                            field_text[str_cls]['text'] += ' ' + text
+                        else: # thêm vào đầu
+                            field_text[str_cls]['text'] = text + ' ' + field_text[str_cls]['text']
+                        field_text[str_cls]['score'] = (field_text[str_cls]['score'] + score) / 2
                     else:
-                        field_text[str_cls]['text'] = text + ' ' + field_text[str_cls]['text']
-                    field_text[str_cls]['score'] = (field_text[str_cls]['score'] + score) / 2
-                else:
-                    field_text[str_cls] = {'text': text, 'y_min': y_min, 'score': score}
-            for region_data in sorted(mrzs, key=lambda x: x['y_min']):
-                result = self._extract_mrz(region_data=region_data)
-                if 'error' in result:
-                    logger.warning(f"Text extraction issue: {result.get('error', 'Unknown error')}")
-                    continue
-                   
-                str_cls = result['field_name']
-                text = result['text']
-                y_min = result['y_min']
-                score = result['score']
+                        field_text[str_cls] = {'text': text, 'y_min': y_min, 'score': score}
+
+            mrzs = sorted(mrzs, key = lambda ele: ele['y_min'])
+            # print(mrzs)
+            for mrz in mrzs:
+                str_cls = mrz['field_name']
+                text = mrz['text']
+                y_min = mrz['y_min']
+                score = mrz['score']
+
                 if str_cls in field_text:
-                    field_text[str_cls]['text'].append(text)
-                    field_text[str_cls]['score'] = (field_text[str_cls]['score'] + score) / 2
+                    field_text['mrz']['text'].append(text)
+                    field_text['mrz']['score'] = (field_text['mrz']['score'] + score) / 2
                 else:
-                    field_text[str_cls] = {'text': [text], 'y_min': y_min, 'score': score}
+                    field_text['mrz'] = {'text': [text], 'y_min': y_min, 'score': score}
+            # print(field_text)
             return field_text, face_qr_img
         except Exception as e:
             logger.error(f"Error extracting text: {str(e)}")

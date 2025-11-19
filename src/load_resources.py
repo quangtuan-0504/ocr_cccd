@@ -11,7 +11,6 @@ from src.configs import settings
 from src.models import (
     load_yoloonnx_4cornercarddet_model,
     load_yoloonnx_textregiondet_model,
-    load_paddle_rec_model,
     load_vietocronnx_rec_model
 )
 from services import IdCardOCRService
@@ -41,8 +40,6 @@ def get_services() -> Dict[str, Any]:
             model_dettextregion = load_yoloonnx_textregiondet_model(cfg.get('initial', {}))
             yolo_textregiondet_model[card_type] = YOLOv11OnnxRuntime(model_dettextregion)
 
-        logger.info('Loading paddle recognition model')
-        paddle_imgrec_model = load_paddle_rec_model(settings.paddle_imgrec_configs.get('initial', {}))
 
         logger.info('Loading VietOCR recognition model')
         vietocr_rec_model = load_vietocronnx_rec_model()
@@ -51,7 +48,6 @@ def get_services() -> Dict[str, Any]:
         resources['ocr_service'] = IdCardOCRService(
             yolo_4cornercarddet_model=yolo_4cornercarddet_model,
             yolo_textregiondet_model=yolo_textregiondet_model,
-            paddle_imgrec_model=paddle_imgrec_model,
             vietocr_rec_model=vietocr_rec_model
         )
         logger.info("All services loaded successfully.")

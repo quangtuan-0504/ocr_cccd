@@ -1,10 +1,10 @@
 # Model paths configuration
 model_paths:
-  yolo_det_4cornercard_model_path: "model/det_card/best.onnx"
-  yolo_det_textcc_model_path: "model/detcls_text_region/cc_best.onnx"
-  yolo_det_textcccd_model_path: "model/detcls_text_region/cccd_best.onnx"
-  paddle_rec_textregion_model_path: "model/en_PP-OCRv4_mobile_rec"
-  vietocr_rec_textregion_model_path: "model/vietocr/"
+  yolo_det_4cornercard_model_path: "model/det4corner/best.onnx"
+  yolo_det_textcc_model_path: "model/textdet/cc/best.onnx"
+  yolo_det_textcccd_model_path: "model/textdet/cccd/best.onnx"
+  vietocr_rec_textregion_model_path: "model/vietocr"
+ 
 
 # Threshold configurations
 thresholds:

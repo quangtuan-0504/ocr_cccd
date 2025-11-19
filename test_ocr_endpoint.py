@@ -4,7 +4,7 @@ import json
 from pathlib import Path
 
 # Cấu hình
-API_URL = "http://localhost:8000/ocr"  # Thay đổi URL nếu cần
+API_URL = "http://localhost:8088/ocr"  # Thay đổi URL nếu cần
 IMAGE_PATH = "path/to/your/id_card.jpg"  # Đường dẫn đến ảnh CCCD test
 
 def encode_image_to_base64(image_path: str) -> str:

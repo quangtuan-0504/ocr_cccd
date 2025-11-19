@@ -73,7 +73,7 @@ async def ocr_id_card(request: OCRRequest):
         return asdict(BaseResponse(
                 data=[],
                 errorCode=400, 
-                errorMessage=ResponseMessage.bad_capture(str(ve))
+                errorMessage=ResponseMessage.bad_capture(str(e))
             )
         )
     except CardDetectionError as e:
@@ -81,7 +81,7 @@ async def ocr_id_card(request: OCRRequest):
         return asdict(BaseResponse(
                 data=[],
                 errorCode=400, 
-                errorMessage=ResponseMessage.card_detect_error(str(ve))
+                errorMessage=ResponseMessage.card_detect_error(str(e))
             )
         )
     except BadBoxError as e:
@@ -89,7 +89,7 @@ async def ocr_id_card(request: OCRRequest):
         return asdict(BaseResponse(
                 data=[],
                 errorCode=400, 
-                errorMessage=ResponseMessage.bad_box(str(ve))
+                errorMessage=ResponseMessage.bad_box(str(e))
             )
         )
     except TextRegionDetectError as e:
@@ -97,7 +97,7 @@ async def ocr_id_card(request: OCRRequest):
         return asdict(BaseResponse(
                 data=[],
                 errorCode=400, 
-                errorMessage=ResponseMessage.text_region_det_error(str(ve))
+                errorMessage=ResponseMessage.text_region_det_error(str(e))
             )
         )
     except TextExtractError as e:
@@ -105,7 +105,7 @@ async def ocr_id_card(request: OCRRequest):
         return asdict(BaseResponse(
                 data=[],
                 errorCode=400, 
-                errorMessage=ResponseMessage.text_extract_error(str(ve))
+                errorMessage=ResponseMessage.text_extract_error(str(e))
             )
         )
     except ValueError as ve:

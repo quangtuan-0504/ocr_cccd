@@ -97,7 +97,6 @@ class Settings(BaseSettings):
     YOLO_DET_TEXTCC_MODEL_PATH: str = config['model_paths']['yolo_det_textcc_model_path']
     YOLO_DET_TEXTCCCD_MODEL_PATH: str = config['model_paths']['yolo_det_textcccd_model_path']
 
-    PADDLE_REC_TEXTREGION_MODEL_PATH: str = config['model_paths']['paddle_rec_textregion_model_path']
     VIETOCR_REC_TEXTREGION_MODEL_PATH: str = config['model_paths']['vietocr_rec_textregion_model_path']
 
     YOLO_CONF_THRESHOLD_DET_CORNERCARD: float = 0.2
@@ -160,23 +159,12 @@ class Settings(BaseSettings):
             }
         }
     }
-    # PaddleOCR image recognition model
-    paddle_imgrec_configs: Dict[str, Dict[str, Any]] = {
-        "initial": {
-            "model_name": "en_PP-OCRv4_mobile_rec",
-            "model_dir": PADDLE_REC_TEXTREGION_MODEL_PATH,
-            "device": "gpu" if 'CUDAExecutionProvider' in ort.get_available_providers() else "cpu",
-            "enable_hpi": False,
-        },
-        "inference": {
-            "batch_size": 1
-        }
-    }
+    
     # VietOCR configuration
     vietocr_configs: Dict[str, Union[str, Dict[str, Any]]] = {
-        'cnn_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/cnn.onnx',
-        'encoder_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/encoder.onnx',
-        'decoder_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/decoder.onnx',
+        'cnn_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/my_cnn.onnx',
+        'encoder_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/my_encoder.onnx',
+        'decoder_onnx_path': f'{VIETOCR_REC_TEXTREGION_MODEL_PATH}/my_decoder.onnx',
         'onnx_execution_options': {
             'enable_cuda': False # 'CUDAExecutionProvider' in ort.get_available_providers()
         }

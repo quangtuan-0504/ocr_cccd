@@ -2,7 +2,6 @@
 Model loading functions for the OCR identification card application.
 """
 
-from paddleocr import TextRecognition
 import onnxruntime
 import yaml
 import os
@@ -84,29 +83,6 @@ def load_yoloonnx_textregiondet_model(configs: Optional[Dict[str, Any]] = None) 
     except Exception as e:
         logger.error(f"Failed to load YOLOv11 text detection model: {str(e)}")
         raise ModelNotLoadedError(f"Failed to load YOLOv11 text detection model: {str(e)}")
-
-def load_paddle_rec_model(configs: Optional[Dict[str, Any]] = None) -> TextRecognition:
-    """
-    Load PaddleOCR model for text image recognition.
-
-    Args:
-        configs: Configuration parameters for the PaddleOCR model.
-
-    Returns:
-        Loaded PaddleOCR recognition model instance.
-
-    Raises:
-        ModelNotLoadedError: If the PaddleOCR recognition model fails to load.
-    """
-    try:
-        configs = configs or {}
-        # logger.info(f"Loading PaddleOCR recognition model with config: {configs}")
-        model = TextRecognition(**configs)
-        logger.info("PaddleOCR recognition model loaded successfully")
-        return model
-    except Exception as e:
-        logger.error(f"Failed to load PaddleOCR recognition model: {str(e)}")
-        raise ModelNotLoadedError(f"Failed to load PaddleOCR recognition model: {str(e)}")
 
 def load_vietocronnx_rec_model() -> Tuple:
     """
