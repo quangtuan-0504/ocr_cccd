@@ -111,7 +111,7 @@ docker compose up
 ![YOLO Training Flow](images/yolo_det4cornercard_dettextregion_flow.png)
 
 ### Quy trình finetuning VietOCR trên dataset custom:
-![VietOCR finetuning Flow](images\vietocr_finetuning_flow.png)
+![VietOCR finetuning Flow](images/vietocr_finetuning_flow.png)
 
 ### Các bước thực hiện:
 - Chuẩn bị data theo quy trình trên.
