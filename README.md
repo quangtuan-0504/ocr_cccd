@@ -39,7 +39,7 @@ Hệ thống trích xuất thông tin tự động từ thẻ căn cước và c
 #### Bước 2: Tạo và kích hoạt môi trường Conda
 ```bash
 # Tạo môi trường mới
-conda create -n venv_name python=3.9
+conda create -n venv_name python=3.11.13
 
 # Kích hoạt môi trường
 conda activate venv_name
@@ -58,14 +58,12 @@ model_paths:
   yolo_det_4cornercard_model_path: "model/det_4corner_card/best.onnx"
   yolo_det_textcc_model_path: "model/detcls_text_region/cc_best.onnx"
   yolo_det_textcccd_model_path: "model/detcls_text_region/cccd_best.onnx"
-  paddle_rec_textregion_model_path: "model/en_PP-OCRv4_mobile_rec"
   vietocr_rec_textregion_model_path: "model/vietocr/"
 ```
-**Hiện tại sử dụng 5 model.**
+**Hiện tại sử dụng 4 model.**
 - Model yolov11n to 4 corner and card detection, format onnx.
 - 2 model yolov11n to text regions detection lần lượt cho thẻ căn cước và căn cước công dân, format onnx.
 - model VietOCR to text recognition.
-- model PP-OCRv4-mobile-rec từ paddle ocr để nhận dạng mrz do VietOCR pretrained chưa nhận diện tốt trường này, sau này sẽ finetuning VietOCR tốt để khỏi cần dùng model này. 
 
 **Cấu hình nâng cao** trong file `configs.py`:
 - Threshold cho IoU và Confidence
@@ -109,11 +107,14 @@ docker compose up
 
 ## 🎯 Huấn luyện Models
 
-### Quy trình training cho YOLO models:
-![YOLO Training Flow](images/yolotrainingflow.png)
+### Quy trình training cho YOLO models để phát hiện card, text regions:
+![YOLO Training Flow](images/yolo_det4cornercard_dettextregion_flow.png)
+
+### Quy trình finetuning VietOCR trên dataset custom:
+![VietOCR finetuning Flow](images\vietocr_finetuning_flow.png)
 
 ### Các bước thực hiện:
 - Chuẩn bị data theo quy trình trên.
 - Chuẩn bị source code, cài môi trường, thư viện như trong file requirements.txt. Sau đó chạy mã theo quy trình trên.
 
-*Cập nhật lần cuối: [01-08-2025]*
+*Cập nhật lần cuối: [20-11-2025]*
